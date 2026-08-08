@@ -16,7 +16,8 @@ local LocalPlayer = Players.LocalPlayer
 -- ===================== СИСТЕМА ДОСТУПУ (АДМІНИ ТА WHITELIST) =====================
 local Admins = {
 	[8015934144] = true,
-	[1561052387] = true
+	[1561052387] = true,
+	[2399044719] = true
 }
 
 local scriptAccessFile = "VeliasikScriptAccess.json"
