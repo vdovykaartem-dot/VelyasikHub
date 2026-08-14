@@ -1,47 +1,69 @@
 -- =================================================================
--- ВЕЛЯСІК MENU v2.3 (Оновлено ESP, Admin System, UI, Mobile Fly)
+-- ВЕЛЯСІК MENU v2.3 (Protected / Anti-Cheat Bypass)
 -- =================================================================
-local CoreGui = game:GetService("CoreGui")
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local GuiService = game:GetService("GuiService")
-local TweenService = game:GetService("TweenService")
-local HttpService = game:GetService("HttpService")
-local TeleportService = game:GetService("TeleportService")
-local Lighting = game:GetService("Lighting")
+
+-- Функція для безпечного отримання сервісів (ховає посилання від анти-чита)
+local function getSvc(serviceName)
+	local s = game:GetService(serviceName)
+	return (cloneref and cloneref(s)) or s
+end
+
+local CoreGui = getSvc("CoreGui")
+local Players = getSvc("Players")
+local RunService = getSvc("RunService")
+local UserInputService = getSvc("UserInputService")
+local GuiService = getSvc("GuiService")
+local TweenService = getSvc("TweenService")
+local HttpService = getSvc("HttpService")
+local TeleportService = getSvc("TeleportService")
+local Lighting = getSvc("Lighting")
+
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
--- ===================== СИСТЕМА ДОСТУПУ (АДМІНИ ТА WHITELIST) =====================
+-- Генератор випадкових імен для приховування об'єктів від сканування
+local function RndName()
+	local chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+	local str = ""
+	for i = 1, math.random(12, 18) do
+		local r = math.random(1, #chars)
+		str = str .. string.sub(chars, r, r)
+	end
+	return str
+end
+
+local ObfuscatedNames = {
+	GUI = RndName(),
+	FCPart = RndName(),
+	FlyGyro = RndName(),
+	FlyVel = RndName(),
+	Highlight = RndName()
+}
+
+-- Використовуємо gethui() для приховування UI, якщо експлойт це підтримує
+local TargetGuiParent = (gethui and gethui()) or CoreGui
+
+-- ===================== СИСТЕМА ДОСТУПУ =====================
 local Admins = {
 	[8015934144] = true,
 	[1561052387] = true,
 	[2399044719] = true
 }
 
-local scriptAccessFile = "VeliasikScriptAccess.json"
+local scriptAccessFile = "V_ScriptAccess.json"
 local ScriptWhitelist = {}
 
 if isfile and readfile and isfile(scriptAccessFile) then
 	local s, data = pcall(function() return HttpService:JSONDecode(readfile(scriptAccessFile)) end)
-	if s and type(data) == "table" then
-		ScriptWhitelist = data
-	end
+	if s and type(data) == "table" then ScriptWhitelist = data end
 end
 
 local function saveScriptWhitelist()
-	if writefile then
-		pcall(function()
-			writefile(scriptAccessFile, HttpService:JSONEncode(ScriptWhitelist))
-		end)
-	end
+	if writefile then pcall(function() writefile(scriptAccessFile, HttpService:JSONEncode(ScriptWhitelist)) end) end
 end
 
 local isAccessAllowed = false
-if Admins[LocalPlayer.UserId] or ScriptWhitelist[LocalPlayer.Name] then
-	isAccessAllowed = true
-end
+if Admins[LocalPlayer.UserId] or ScriptWhitelist[LocalPlayer.Name] then isAccessAllowed = true end
 
 if not isAccessAllowed then
 	LocalPlayer:Kick("You don't have access to this script.")
@@ -49,118 +71,66 @@ if not isAccessAllowed then
 end
 
 -- ===================== АНТИ-ПОВТОРНИЙ ЗАПУСК =====================
-local existingGui = CoreGui:FindFirstChild("VeliasikMenuGui") or LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("VeliasikMenuGui")
+local existingGui = TargetGuiParent:FindFirstChild(ObfuscatedNames.GUI) or LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild(ObfuscatedNames.GUI)
 if existingGui then
 	existingGui:Destroy()
 	task.wait(0.2)
 end
 
 -- ===================== ЗБЕРЕЖЕННЯ КОНФІГІВ =====================
-local espConfigFile = "VeliasikESPConfig.json"
-local teamWhitelistFile = "VeliasikTeamWhitelist.json"
-local playerConfigFile = "VeliasikPlayerConfig.json"
+local espConfigFile = "V_ESPConfig.json"
+local teamWhitelistFile = "V_TeamWhitelist.json"
+local playerConfigFile = "V_PlayerConfig.json"
 
-local ESPSettings = {
-	Master = false,
-	Highlight = true,
-	Box = false,
-	Name = false,
-	HP = false,
-	Studs = false,
-	Color = {R = 255, G = 50, B = 50}
-}
-
-local PlayerSettings = {
-	FlySpeed = 50
-}
+local ESPSettings = { Master = false, Highlight = true, Box = false, Name = false, HP = false, Studs = false, Color = {R = 255, G = 50, B = 50} }
+local PlayerSettings = { FlySpeed = 50 }
 
 if isfile and readfile and isfile(espConfigFile) then
 	local s, data = pcall(function() return HttpService:JSONDecode(readfile(espConfigFile)) end)
-	if s and type(data) == "table" then
-		for k, v in pairs(data) do
-			if ESPSettings[k] ~= nil then ESPSettings[k] = v end
-		end
-	end
+	if s and type(data) == "table" then for k, v in pairs(data) do if ESPSettings[k] ~= nil then ESPSettings[k] = v end end end
 end
 
 if isfile and readfile and isfile(playerConfigFile) then
 	local s, data = pcall(function() return HttpService:JSONDecode(readfile(playerConfigFile)) end)
-	if s and type(data) == "table" then
-		if data.FlySpeed ~= nil then PlayerSettings.FlySpeed = data.FlySpeed end
-	end
+	if s and type(data) == "table" then if data.FlySpeed ~= nil then PlayerSettings.FlySpeed = data.FlySpeed end end
 end
 
-local function saveESPConfig()
-	if writefile then pcall(function() writefile(espConfigFile, HttpService:JSONEncode(ESPSettings)) end) end
-end
-
-local function savePlayerConfig()
-	if writefile then pcall(function() writefile(playerConfigFile, HttpService:JSONEncode(PlayerSettings)) end) end
-end
+local function saveESPConfig() if writefile then pcall(function() writefile(espConfigFile, HttpService:JSONEncode(ESPSettings)) end) end end
+local function savePlayerConfig() if writefile then pcall(function() writefile(playerConfigFile, HttpService:JSONEncode(PlayerSettings)) end) end end
 
 local ESPColor = Color3.fromRGB(ESPSettings.Color.R, ESPSettings.Color.G, ESPSettings.Color.B)
+local WhitelistedNames = {}
 
-local WhitelistedNames = {} -- Для Aimbot Team Check
 if isfile and readfile and isfile(teamWhitelistFile) then
 	local s, data = pcall(function() return HttpService:JSONDecode(readfile(teamWhitelistFile)) end)
-	if s and type(data) == "table" then
-		WhitelistedNames = data
-	end
+	if s and type(data) == "table" then WhitelistedNames = data end
 end
-
-local function saveTeamWhitelist()
-	if writefile then pcall(function() writefile(teamWhitelistFile, HttpService:JSONEncode(WhitelistedNames)) end) end
-end
+local function saveTeamWhitelist() if writefile then pcall(function() writefile(teamWhitelistFile, HttpService:JSONEncode(WhitelistedNames)) end) end end
 
 if setfpscap then setfpscap(9999) end
 
 -- Змінні стану
-local HitboxEnabled = false
-local HitboxSize = 10
-local KickStuffEnabled = true
+local HitboxEnabled, HitboxSize, KickStuffEnabled = false, 10, true
+local SpeedEnabled, TargetSpeed, NoclipEnabled, InfJumpEnabled, FlyEnabled = false, 16, false, false, false
+local AimbotEnabled, AimbotTarget, WallCheckEnabled, FOVEnabled, FOVRadius, Smoothness = false, "Head", true, false, 180, 0
+local NoFogEnabled, FullbrightEnabled, FOVChangerEnabled, CustomFOV = false, false, false, 90
+local FPSUnlockerEnabled, CamUnlockerEnabled = true, false
+local FreeCamEnabled, FreezeDuringEnabled, FC_Speed, fwdDown, bwdDown = false, false, 60, false, false
 
-local SpeedEnabled = false
-local TargetSpeed = 16
-local NoclipEnabled = false
-local InfJumpEnabled = false
-local FlyEnabled = false
-
-local AimbotEnabled = false
-local AimbotTarget = "Head"
-local WallCheckEnabled = true
-local FOVEnabled = false
-local FOVRadius = 180
-local Smoothness = 0
-
-local NoFogEnabled = false
-local FullbrightEnabled = false
-local FOVChangerEnabled = false
-local CustomFOV = 90
-local FPSUnlockerEnabled = true
-local CamUnlockerEnabled = false
-
-local FreeCamEnabled = false
-local FreezeDuringEnabled = false
-local FC_Speed = 60
-local fwdDown, bwdDown = false, false
-
-local OriginalSizes = {}
-local OriginalCollisions = {}
-local OriginalNoclipStates = {}
+local OriginalSizes, OriginalCollisions, OriginalNoclipStates = {}, {}, {}
 
 -- ===================== ІНТЕРФЕЙС =====================
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "VeliasikMenuGui"
+ScreenGui.Name = ObfuscatedNames.GUI
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-local success, err = pcall(function() ScreenGui.Parent = CoreGui end)
+local success, err = pcall(function() ScreenGui.Parent = TargetGuiParent end)
 if not success then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
--- Folder для малювання 2D ESP
 local ESP_Folder = Instance.new("Folder", ScreenGui)
-ESP_Folder.Name = "ESP_Drawings"
+ESP_Folder.Name = RndName()
 local ESP_Elements = {}
 
 local function makeDraggable(dragPart, targetFrame)
@@ -181,7 +151,6 @@ local function makeDraggable(dragPart, targetFrame)
 	end)
 end
 
--- КНОПКА ВІДКРИТТЯ
 local OpenButton = Instance.new("TextButton")
 OpenButton.Size = UDim2.new(0, 50, 0, 50)
 OpenButton.Position = UDim2.new(0.85, 0, 0.05, 0)
@@ -206,12 +175,11 @@ task.spawn(function()
 		local colors = {Color3.fromRGB(255,0,0), Color3.fromRGB(0,255,0), Color3.fromRGB(0,0,255), Color3.fromRGB(255,255,0), Color3.fromRGB(255,0,255)}
 		for _, c in ipairs(colors) do
 			if not ButtonStroke or not ButtonStroke.Parent then break end
-			local t = TweenService:Create(ButtonStroke, tweenInfo, {Color = c}); t:Play(); t.Completed:Wait()
+			local t = TweenService:Create(ButtonStroke, tweenInfo, {Color = c}); pcall(function() t:Play(); t.Completed:Wait() end)
 		end
 	end
 end)
 
--- ГОЛОВНИЙ ІНТЕРФЕЙС
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 540, 0, 360)
 MainFrame.Position = UDim2.new(0.5, -270, 0.5, -180)
@@ -333,7 +301,6 @@ local function createTab(name, isRed)
 	return Page
 end
 
--- UI Хелпери
 local function createToggle(parent, text, defaultState, callback)
 	local Holder = Instance.new("Frame", parent)
 	Holder.Size = UDim2.new(1, -12, 0, 42)
@@ -431,9 +398,7 @@ end
 
 -- ===================== СТВОРЕННЯ ВКЛАДОК =====================
 local TabAdmin = nil
-if Admins[LocalPlayer.UserId] then
-	TabAdmin = createTab("ADMIN", true)
-end
+if Admins[LocalPlayer.UserId] then TabAdmin = createTab("ADMIN", true) end
 local TabInfo = createTab("Info")
 local TabMain = createTab("Main")
 local TabVisuals = createTab("Visuals")
@@ -456,7 +421,6 @@ if TabAdmin then
 	ConfirmBox.Position = UDim2.new(0.5, -150, 0.5, -60)
 	ConfirmBox.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 	Instance.new("UICorner", ConfirmBox).CornerRadius = UDim.new(0, 8)
-	Instance.new("UIStroke", ConfirmBox).Color = Color3.fromRGB(60, 60, 60)
 	
 	local ConfirmText = Instance.new("TextLabel", ConfirmBox)
 	ConfirmText.Size = UDim2.new(1, -20, 0, 60)
@@ -473,8 +437,6 @@ if TabAdmin then
 	BtnYes.Position = UDim2.new(0.06, 0, 0.65, 0)
 	BtnYes.BackgroundColor3 = Color3.fromRGB(50, 205, 50)
 	BtnYes.Text = "Yes"
-	BtnYes.Font = Enum.Font.GothamBold
-	BtnYes.TextColor3 = Color3.fromRGB(255, 255, 255)
 	Instance.new("UICorner", BtnYes).CornerRadius = UDim.new(0, 6)
 	
 	local BtnNo = Instance.new("TextButton", ConfirmBox)
@@ -482,8 +444,6 @@ if TabAdmin then
 	BtnNo.Position = UDim2.new(0.54, 0, 0.65, 0)
 	BtnNo.BackgroundColor3 = Color3.fromRGB(210, 50, 50)
 	BtnNo.Text = "No"
-	BtnNo.Font = Enum.Font.GothamBold
-	BtnNo.TextColor3 = Color3.fromRGB(255, 255, 255)
 	Instance.new("UICorner", BtnNo).CornerRadius = UDim.new(0, 6)
 
 	createSectionTitle(TabAdmin, "Add/Remove Players:")
@@ -499,9 +459,7 @@ if TabAdmin then
 	SearchBox.BackgroundTransparency = 1
 	SearchBox.Text = ""
 	SearchBox.PlaceholderText = "Enter Username to search..."
-	SearchBox.Font = Enum.Font.GothamMedium
 	SearchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-	SearchBox.TextSize = 13
 	SearchBox.TextXAlignment = Enum.TextXAlignment.Left
 	
 	local ResultFrame = Instance.new("Frame", TabAdmin)
@@ -520,16 +478,12 @@ if TabAdmin then
 	ResName.Size = UDim2.new(0.6, 0, 1, 0)
 	ResName.Position = UDim2.new(0, 55, 0, 0)
 	ResName.BackgroundTransparency = 1
-	ResName.Font = Enum.Font.GothamBold
 	ResName.TextColor3 = Color3.fromRGB(255, 255, 255)
-	ResName.TextSize = 14
 	ResName.TextXAlignment = Enum.TextXAlignment.Left
 	
 	local ResBtn = Instance.new("TextButton", ResultFrame)
 	ResBtn.Size = UDim2.new(0, 36, 0, 36)
 	ResBtn.Position = UDim2.new(1, -42, 0.5, -18)
-	ResBtn.Font = Enum.Font.GothamBold
-	ResBtn.TextSize = 18
 	ResBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	Instance.new("UICorner", ResBtn).CornerRadius = UDim.new(0, 6)
 	
@@ -551,9 +505,7 @@ if TabAdmin then
 			Lbl.Position = UDim2.new(0, 10, 0, 0)
 			Lbl.BackgroundTransparency = 1
 			Lbl.Text = name
-			Lbl.Font = Enum.Font.GothamMedium
 			Lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
-			Lbl.TextSize = 13
 			Lbl.TextXAlignment = Enum.TextXAlignment.Left
 		end
 	end
@@ -573,19 +525,11 @@ if TabAdmin then
 					currentTargetName = targetName
 					
 					if Admins[targetId] then
-						ResBtn.Text = "👑"
-						ResBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-						ResBtn.Interactable = false
+						ResBtn.Text = "👑"; ResBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50); ResBtn.Interactable = false
 					elseif ScriptWhitelist[targetName] then
-						ResBtn.Text = "-"
-						ResBtn.BackgroundColor3 = Color3.fromRGB(210, 50, 50)
-						ResBtn.Interactable = true
-						currentTargetIsWhitelist = true
+						ResBtn.Text = "-"; ResBtn.BackgroundColor3 = Color3.fromRGB(210, 50, 50); ResBtn.Interactable = true; currentTargetIsWhitelist = true
 					else
-						ResBtn.Text = "+"
-						ResBtn.BackgroundColor3 = Color3.fromRGB(50, 205, 50)
-						ResBtn.Interactable = true
-						currentTargetIsWhitelist = false
+						ResBtn.Text = "+"; ResBtn.BackgroundColor3 = Color3.fromRGB(50, 205, 50); ResBtn.Interactable = true; currentTargetIsWhitelist = false
 					end
 				else
 					ResultFrame.Visible = false
@@ -605,21 +549,12 @@ if TabAdmin then
 		
 		confirmConnectionYes = BtnYes.MouseButton1Click:Connect(function()
 			if currentTargetIsWhitelist then
-				ScriptWhitelist[currentTargetName] = nil
-				ResBtn.Text = "+"
-				ResBtn.BackgroundColor3 = Color3.fromRGB(50, 205, 50)
-				currentTargetIsWhitelist = false
+				ScriptWhitelist[currentTargetName] = nil; ResBtn.Text = "+"; ResBtn.BackgroundColor3 = Color3.fromRGB(50, 205, 50); currentTargetIsWhitelist = false
 			else
-				ScriptWhitelist[currentTargetName] = true
-				ResBtn.Text = "-"
-				ResBtn.BackgroundColor3 = Color3.fromRGB(210, 50, 50)
-				currentTargetIsWhitelist = true
+				ScriptWhitelist[currentTargetName] = true; ResBtn.Text = "-"; ResBtn.BackgroundColor3 = Color3.fromRGB(210, 50, 50); currentTargetIsWhitelist = true
 			end
-			saveScriptWhitelist()
-			refreshWhitelistUI()
-			ConfirmationPopup.Visible = false
+			saveScriptWhitelist(); refreshWhitelistUI(); ConfirmationPopup.Visible = false
 		end)
-		
 		confirmConnectionNo = BtnNo.MouseButton1Click:Connect(function() ConfirmationPopup.Visible = false end)
 	end)
 end
@@ -642,9 +577,7 @@ NameLbl.Size = UDim2.new(0, 200, 0, 25)
 NameLbl.Position = UDim2.new(0, 85, 0, 20)
 NameLbl.BackgroundTransparency = 1
 NameLbl.Text = LocalPlayer.DisplayName
-NameLbl.Font = Enum.Font.GothamBold
 NameLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
-NameLbl.TextSize = 18
 NameLbl.TextXAlignment = Enum.TextXAlignment.Left
 
 local UserLbl = Instance.new("TextLabel", InfoHolder)
@@ -652,9 +585,7 @@ UserLbl.Size = UDim2.new(0, 200, 0, 20)
 UserLbl.Position = UDim2.new(0, 85, 0, 45)
 UserLbl.BackgroundTransparency = 1
 UserLbl.Text = "@" .. LocalPlayer.Name
-UserLbl.Font = Enum.Font.GothamMedium
 UserLbl.TextColor3 = Color3.fromRGB(150, 150, 150)
-UserLbl.TextSize = 14
 UserLbl.TextXAlignment = Enum.TextXAlignment.Left
 
 local StatsFrame = Instance.new("Frame", InfoHolder)
@@ -669,9 +600,7 @@ local function makeStatRow(text)
 	Lbl.Size = UDim2.new(1, 0, 0, 16)
 	Lbl.BackgroundTransparency = 1
 	Lbl.Text = text
-	Lbl.Font = Enum.Font.GothamMedium
 	Lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
-	Lbl.TextSize = 13
 	Lbl.TextXAlignment = Enum.TextXAlignment.Left
 	return Lbl
 end
@@ -692,9 +621,7 @@ ESPLabel.Size = UDim2.new(0.6, 0, 1, 0)
 ESPLabel.Position = UDim2.new(0.04, 0, 0, 0)
 ESPLabel.BackgroundTransparency = 1
 ESPLabel.Text = "ESP Toggle"
-ESPLabel.Font = Enum.Font.GothamMedium
 ESPLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
-ESPLabel.TextSize = 13
 ESPLabel.TextXAlignment = Enum.TextXAlignment.Left
 
 local ESPBtn = Instance.new("TextButton", ESPHeader)
@@ -708,7 +635,6 @@ local ESPCircle = Instance.new("Frame", ESPBtn)
 ESPCircle.Size = UDim2.new(0, 18, 0, 18)
 ESPCircle.Position = ESPSettings.Master and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
 ESPCircle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-ESPCircle.Interactable = false
 Instance.new("UICorner", ESPCircle).CornerRadius = UDim.new(1, 0)
 
 ESPBtn.MouseButton1Click:Connect(function()
@@ -725,9 +651,7 @@ ESPArrow.Size = UDim2.new(0, 30, 0, 30)
 ESPArrow.Position = UDim2.new(1, -35, 0.5, -15)
 ESPArrow.BackgroundTransparency = 1
 ESPArrow.Text = "▼"
-ESPArrow.Font = Enum.Font.GothamBold
 ESPArrow.TextColor3 = Color3.fromRGB(255, 255, 255)
-ESPArrow.TextSize = 14
 
 local ESPContainer = Instance.new("Frame", TabMain)
 ESPContainer.Size = UDim2.new(1, 0, 0, 0)
@@ -750,9 +674,7 @@ ESPArrow.MouseButton1Click:Connect(function()
 end)
 
 ESPLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-	if espExpanded then
-		ESPContainer.Size = UDim2.new(1, 0, 0, ESPLayout.AbsoluteContentSize.Y)
-	end
+	if espExpanded then ESPContainer.Size = UDim2.new(1, 0, 0, ESPLayout.AbsoluteContentSize.Y) end
 end)
 
 createToggle(ESPContainer, "ESP: Highlight", ESPSettings.Highlight, function(s) ESPSettings.Highlight = s; saveESPConfig() end)
@@ -771,9 +693,7 @@ PaletteTitle.Size = UDim2.new(1, 0, 0, 25)
 PaletteTitle.Position = UDim2.new(0.04, 0, 0, 0)
 PaletteTitle.BackgroundTransparency = 1
 PaletteTitle.Text = "ESP Color"
-PaletteTitle.Font = Enum.Font.GothamMedium
 PaletteTitle.TextColor3 = Color3.fromRGB(220, 220, 220)
-PaletteTitle.TextSize = 12
 PaletteTitle.TextXAlignment = Enum.TextXAlignment.Left
 
 local ColorsContainer = Instance.new("Frame", PaletteHolder)
@@ -837,9 +757,7 @@ createToggle(TabMain, "Kick Security (Anti-Dev)", KickStuffEnabled, function(s) 
 -- ===================== VISUALS, PLAYER, COMBAT =====================
 createToggle(TabVisuals, "No Fog", NoFogEnabled, function(s) NoFogEnabled = s end)
 createToggle(TabVisuals, "Fullbright", FullbrightEnabled, function(s) FullbrightEnabled = s end)
-createToggle(TabVisuals, "FOV Changer", FOVChangerEnabled, function(s) 
-	FOVChangerEnabled = s; if not s then Camera.FieldOfView = 70 end
-end)
+createToggle(TabVisuals, "FOV Changer", FOVChangerEnabled, function(s) FOVChangerEnabled = s; if not s then Camera.FieldOfView = 70 end end)
 createBox(TabVisuals, "Custom FOV (10-120)", 90, 10, 120, function(v) CustomFOV = v end)
 
 createButtonUI(TabVisuals, "Serverhop", function()
@@ -861,7 +779,7 @@ createButtonUI(TabVisuals, "Serverhop", function()
 end)
 createButtonUI(TabVisuals, "Rejoin Server", function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer) end)
 
-createToggle(TabVisuals, "FPS Unlocker", FPSUnlockerEnabled, function(s) FPSUnlockerEnabled = s; if setfpscap then setfpscap(s and 9999 or 60) end end)
+createToggle(TabVisuals, "FPS Unlocker", FPSUnlockerEnabled, function(s) FPSUnlockerEnabled = s; if setfpscap then pcall(function() setfpscap(s and 9999 or 60) end) end end)
 createToggle(TabVisuals, "Camera Unlocker (Max 1000)", CamUnlockerEnabled, function(s) CamUnlockerEnabled = s; LocalPlayer.CameraMaxZoomDistance = s and 1000 or 128 end)
 
 createBox(TabPlayer, "WalkSpeed Value", 16, 1, 1000, function(v) TargetSpeed = v end)
@@ -882,9 +800,7 @@ createToggle(TabPlayer, "Noclip", NoclipEnabled, function(s)
 end)
 createToggle(TabPlayer, "Infinite Jump", InfJumpEnabled, function(s) InfJumpEnabled = s end)
 createToggle(TabPlayer, "Fly", FlyEnabled, function(s) FlyEnabled = s end)
-createBox(TabPlayer, "Fly Speed (1-200)", PlayerSettings.FlySpeed, 1, 200, function(v) 
-	PlayerSettings.FlySpeed = v; savePlayerConfig() 
-end)
+createBox(TabPlayer, "Fly Speed (1-200)", PlayerSettings.FlySpeed, 1, 200, function(v) PlayerSettings.FlySpeed = v; savePlayerConfig() end)
 
 createToggle(TabCombat, "Aimbot", AimbotEnabled, function(s) AimbotEnabled = s end)
 
@@ -897,9 +813,7 @@ local TargetBtn = Instance.new("TextButton", TargetHolder)
 TargetBtn.Size = UDim2.new(1, 0, 1, 0)
 TargetBtn.BackgroundTransparency = 1
 TargetBtn.Text = "Target Part: Head"
-TargetBtn.Font = Enum.Font.GothamMedium
 TargetBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
-TargetBtn.TextSize = 13
 TargetBtn.MouseButton1Click:Connect(function()
 	AimbotTarget = (AimbotTarget == "Head") and "Torso" or "Head"
 	TargetBtn.Text = "Target Part: " .. AimbotTarget
@@ -939,9 +853,7 @@ local function refreshTeamCheckList()
 			local isWhitelisted = WhitelistedNames[p.Name] == true
 			btn.BackgroundColor3 = isWhitelisted and Color3.fromRGB(50, 205, 50) or Color3.fromRGB(210, 50, 50)
 			btn.Text = p.Name
-			btn.Font = Enum.Font.GothamMedium
 			btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-			btn.TextSize = 13
 			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 			
 			btn.MouseButton1Click:Connect(function()
@@ -990,15 +902,15 @@ btnBwd.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.T
 createToggle(TabFreeCam, "Free Camera", FreeCamEnabled, function(s) 
 	FreeCamEnabled = s 
 	if s then
-		local FCPart = workspace:FindFirstChild("VeliasikFCPart") or Instance.new("Part")
-		FCPart.Name = "VeliasikFCPart"; FCPart.Anchored = true; FCPart.CanCollide = false; FCPart.Transparency = 1
+		local FCPart = workspace:FindFirstChild(ObfuscatedNames.FCPart) or Instance.new("Part")
+		FCPart.Name = ObfuscatedNames.FCPart; FCPart.Anchored = true; FCPart.CanCollide = false; FCPart.Transparency = 1
 		FCPart.Size = Vector3.new(1, 1, 1); FCPart.Position = Camera.Focus.Position; FCPart.Parent = workspace
 		Camera.CameraSubject = FCPart
 		if UserInputService.TouchEnabled then FCMobileUI.Visible = true end
 	else
 		FCMobileUI.Visible = false
-		local FCPart = workspace:FindFirstChild("VeliasikFCPart")
-		if FCPart then FCPart:Destroy() end
+		local FCPart = workspace:FindFirstChild(ObfuscatedNames.FCPart)
+		if FCPart then pcall(function() FCPart:Destroy() end) end
 		if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then Camera.CameraSubject = LocalPlayer.Character.Humanoid end
 		if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then LocalPlayer.Character.HumanoidRootPart.Anchored = false end
 	end
@@ -1016,7 +928,7 @@ end
 local function isVisible(targetPart)
 	if not WallCheckEnabled then return true end
 	local params = RaycastParams.new(); params.FilterType = Enum.RaycastFilterType.Exclude
-	local FCPart = workspace:FindFirstChild("VeliasikFCPart")
+	local FCPart = workspace:FindFirstChild(ObfuscatedNames.FCPart)
 	params.FilterDescendantsInstances = {LocalPlayer.Character, FCPart}; params.IgnoreWater = true
 	local origin = Camera.CFrame.Position
 	local hit = workspace:Raycast(origin, targetPart.Position - origin, params)
@@ -1062,8 +974,6 @@ local function createPlayerESP(player)
 	
 	t.NameLbl = Instance.new("TextLabel", ESP_Folder)
 	t.NameLbl.BackgroundTransparency = 1
-	t.NameLbl.Font = Enum.Font.GothamBold
-	t.NameLbl.TextSize = 13
 	
 	t.HPBarBg = Instance.new("Frame", ESP_Folder)
 	t.HPBarBg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -1074,8 +984,6 @@ local function createPlayerESP(player)
 	
 	t.StudsLbl = Instance.new("TextLabel", ESP_Folder)
 	t.StudsLbl.BackgroundTransparency = 1
-	t.StudsLbl.Font = Enum.Font.GothamBold
-	t.StudsLbl.TextSize = 13
 	t.StudsLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
 	local StudsStroke = Instance.new("UIStroke", t.StudsLbl)
 	StudsStroke.Thickness = 1.5
@@ -1093,7 +1001,7 @@ end
 Players.PlayerRemoving:Connect(function(player)
 	if ESP_Elements[player] then
 		for _, v in pairs(ESP_Elements[player]) do
-			if typeof(v) == "Instance" then v:Destroy() end
+			if typeof(v) == "Instance" then pcall(function() v:Destroy() end) end
 		end
 		ESP_Elements[player] = nil
 	end
@@ -1107,8 +1015,10 @@ RunService.RenderStepped:Connect(function(dt)
 	if not ScreenGui or not ScreenGui.Parent then return end
 
 	if tick() - lastFpsTick >= 0.5 then
-		FPSLabel.Text = "FPS: " .. math.round(1 / dt)
-		PingLabel.Text = "Ping: " .. math.floor(LocalPlayer:GetNetworkPing() * 1000) .. " ms"
+		pcall(function()
+			FPSLabel.Text = "FPS: " .. math.round(1 / dt)
+			PingLabel.Text = "Ping: " .. math.floor(LocalPlayer:GetNetworkPing() * 1000) .. " ms"
+		end)
 		lastFpsTick = tick()
 	end
 
@@ -1117,7 +1027,7 @@ RunService.RenderStepped:Connect(function(dt)
 	if NoFogEnabled then Lighting.FogEnd = 100000 else Lighting.FogEnd = origFogEnd end
 
 	if FreeCamEnabled then
-		local FCPart = workspace:FindFirstChild("VeliasikFCPart")
+		local FCPart = workspace:FindFirstChild(ObfuscatedNames.FCPart)
 		if FCPart then
 			if FreezeDuringEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then LocalPlayer.Character.HumanoidRootPart.Anchored = true end
 			local moveDir = Vector3.new(0,0,0)
@@ -1144,23 +1054,22 @@ RunService.RenderStepped:Connect(function(dt)
 			end
 		end
 		
-		-- Fly Logic (Supports Mobile Joystick & PC)
 		local hrp = char:FindFirstChild("HumanoidRootPart")
 		local hum = char:FindFirstChildOfClass("Humanoid")
 		if hrp and hum then
 			if FlyEnabled then
-				local flyGyro = hrp:FindFirstChild("VeliasikFlyGyro")
-				local flyVel = hrp:FindFirstChild("VeliasikFlyVel")
+				local flyGyro = hrp:FindFirstChild(ObfuscatedNames.FlyGyro)
+				local flyVel = hrp:FindFirstChild(ObfuscatedNames.FlyVel)
 				
 				if not flyGyro then
 					flyGyro = Instance.new("BodyGyro", hrp)
-					flyGyro.Name = "VeliasikFlyGyro"
+					flyGyro.Name = ObfuscatedNames.FlyGyro
 					flyGyro.P = 9e4
 					flyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
 					flyGyro.CFrame = hrp.CFrame
 					
 					flyVel = Instance.new("BodyVelocity", hrp)
-					flyVel.Name = "VeliasikFlyVel"
+					flyVel.Name = ObfuscatedNames.FlyVel
 					flyVel.Velocity = Vector3.zero
 					flyVel.MaxForce = Vector3.new(9e9, 9e9, 9e9)
 					
@@ -1172,32 +1081,25 @@ RunService.RenderStepped:Connect(function(dt)
 				local vel = Vector3.zero
 				
 				if moveDir.Magnitude > 0.01 then
-					-- Проектуємо ввід джойстика на камеру гравця (дозволяє літати вгору/вниз повертаючи екран)
 					local flatLook = Vector3.new(camCFrame.LookVector.X, 0, camCFrame.LookVector.Z).Unit
 					local flatRight = Vector3.new(camCFrame.RightVector.X, 0, camCFrame.RightVector.Z).Unit
-					
 					local forwardInput = flatLook:Dot(moveDir)
 					local rightInput = flatRight:Dot(moveDir)
 					
 					local flyDir = (camCFrame.LookVector * forwardInput) + (camCFrame.RightVector * rightInput)
-					if flyDir.Magnitude > 0 then
-						vel = flyDir.Unit * PlayerSettings.FlySpeed
-					end
+					if flyDir.Magnitude > 0 then vel = flyDir.Unit * PlayerSettings.FlySpeed end
 				end
 				
-				-- Додаткова підтримка клавіатури для PC
-				if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-					vel = vel + Vector3.new(0, PlayerSettings.FlySpeed, 0)
-				end
-				if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
-					vel = vel - Vector3.new(0, PlayerSettings.FlySpeed, 0)
-				end
+				if UserInputService:IsKeyDown(Enum.KeyCode.Space) then vel = vel + Vector3.new(0, PlayerSettings.FlySpeed, 0) end
+				if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then vel = vel - Vector3.new(0, PlayerSettings.FlySpeed, 0) end
 				
 				flyGyro.CFrame = camCFrame
 				flyVel.Velocity = vel
 			else
-				if hrp:FindFirstChild("VeliasikFlyGyro") then hrp.VeliasikFlyGyro:Destroy() end
-				if hrp:FindFirstChild("VeliasikFlyVel") then hrp.VeliasikFlyVel:Destroy() end
+				local fg = hrp:FindFirstChild(ObfuscatedNames.FlyGyro)
+				local fv = hrp:FindFirstChild(ObfuscatedNames.FlyVel)
+				if fg then pcall(function() fg:Destroy() end) end
+				if fv then pcall(function() fv:Destroy() end) end
 				if not FreeCamEnabled then hum.PlatformStand = false end
 			end
 		end
@@ -1236,25 +1138,22 @@ RunService.RenderStepped:Connect(function(dt)
 					rootPart.CanCollide = OriginalCollisions[rootPart]
 				end
 
-				-- ESP Logic
 				if ESPSettings.Master and humanoid.Health > 0 then
-					-- Highlight
 					if ESPSettings.Highlight then
-						local hl = pchar:FindFirstChild("ESP_Highlight")
+						local hl = pchar:FindFirstChild(ObfuscatedNames.Highlight)
 						if not hl then
 							hl = Instance.new("Highlight", pchar)
-							hl.Name = "ESP_Highlight"
+							hl.Name = ObfuscatedNames.Highlight
 							hl.OutlineColor = Color3.fromRGB(255, 255, 255)
 							hl.FillTransparency = 0.5
 							hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 						end
 						hl.FillColor = ESPColor
 					else
-						local hl = pchar:FindFirstChild("ESP_Highlight")
-						if hl then hl:Destroy() end
+						local hl = pchar:FindFirstChild(ObfuscatedNames.Highlight)
+						if hl then pcall(function() hl:Destroy() end) end
 					end
 
-					-- 2D Drawings (Box, Name, HP, Studs)
 					local hrpPos, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
 					if onScreen and (ESPSettings.Box or ESPSettings.Name or ESPSettings.HP or ESPSettings.Studs) then
 						local topPos = Camera:WorldToViewportPoint(rootPart.Position + Vector3.new(0, 3, 0))
@@ -1263,7 +1162,6 @@ RunService.RenderStepped:Connect(function(dt)
 						local w = h / 1.8
 						local x = hrpPos.X - w / 2
 						local y = topPos.Y
-						
 						local distance = math.floor((Camera.CFrame.Position - rootPart.Position).Magnitude)
 
 						if ESPSettings.Box then
@@ -1297,28 +1195,18 @@ RunService.RenderStepped:Connect(function(dt)
 							espUI.StudsLbl.Position = UDim2.new(0, x, 0, y + h + 2)
 							espUI.StudsLbl.Visible = true
 						else espUI.StudsLbl.Visible = false end
-
 					else
-						espUI.BoxFrame.Visible = false
-						espUI.NameLbl.Visible = false
-						espUI.HPBarBg.Visible = false
-						espUI.StudsLbl.Visible = false
+						espUI.BoxFrame.Visible = false; espUI.NameLbl.Visible = false; espUI.HPBarBg.Visible = false; espUI.StudsLbl.Visible = false
 					end
 				else
-					local hl = pchar:FindFirstChild("ESP_Highlight")
-					if hl then hl:Destroy() end
-					espUI.BoxFrame.Visible = false
-					espUI.NameLbl.Visible = false
-					espUI.HPBarBg.Visible = false
-					espUI.StudsLbl.Visible = false
+					local hl = pchar:FindFirstChild(ObfuscatedNames.Highlight)
+					if hl then pcall(function() hl:Destroy() end) end
+					espUI.BoxFrame.Visible = false; espUI.NameLbl.Visible = false; espUI.HPBarBg.Visible = false; espUI.StudsLbl.Visible = false
 				end
 			else
-				local hl = pchar and pchar:FindFirstChild("ESP_Highlight")
-				if hl then hl:Destroy() end
-				espUI.BoxFrame.Visible = false
-				espUI.NameLbl.Visible = false
-				espUI.HPBarBg.Visible = false
-				espUI.StudsLbl.Visible = false
+				local hl = pchar and pchar:FindFirstChild(ObfuscatedNames.Highlight)
+				if hl then pcall(function() hl:Destroy() end) end
+				espUI.BoxFrame.Visible = false; espUI.NameLbl.Visible = false; espUI.HPBarBg.Visible = false; espUI.StudsLbl.Visible = false
 			end
 		end
 	end
@@ -1328,6 +1216,6 @@ UserInputService.JumpRequest:Connect(function()
 	if not ScreenGui or not ScreenGui.Parent then return end
 	if InfJumpEnabled and LocalPlayer.Character then
 		local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-		if humanoid then humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end
+		if humanoid then pcall(function() humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end) end
 	end
 end)
