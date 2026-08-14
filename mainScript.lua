@@ -45,7 +45,8 @@ local TargetGuiParent = (gethui and gethui()) or CoreGui
 local Admins = {
 	[8015934144] = true,
 	[1561052387] = true,
-	[2399044719] = true
+	[2399044719] = true,
+	[11378912177] = true
 }
 
 local scriptAccessFile = "V_ScriptAccess.json"
