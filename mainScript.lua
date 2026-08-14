@@ -1,8 +1,8 @@
 -- =================================================================
--- ВЕЛЯСІК MENU v2.3 (Protected / Anti-Cheat Bypass)
+-- ВЕЛЯСІК MENU v2.3 (Protected / Anti-Cheat Bypass)[cite: 3]
 -- =================================================================
 
--- Функція для безпечного отримання сервісів (ховає посилання від анти-чита)
+-- Функція для безпечного отримання сервісів (ховає посилання від анти-чита)[cite: 3]
 local function getSvc(serviceName)
 	local s = game:GetService(serviceName)
 	return (cloneref and cloneref(s)) or s
@@ -21,7 +21,7 @@ local Lighting = getSvc("Lighting")
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
--- Генератор випадкових імен для приховування об'єктів від сканування
+-- Генератор випадкових імен для приховування об'єктів від сканування[cite: 3]
 local function RndName()
 	local chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 	local str = ""
@@ -40,7 +40,7 @@ local ObfuscatedNames = {
 	Highlight = RndName()
 }
 
--- Використовуємо gethui() для приховування UI, якщо експлойт це підтримує
+-- Використовуємо gethui() для приховування UI, якщо експлойт це підтримує[cite: 3]
 local TargetGuiParent = (gethui and gethui()) or CoreGui
 
 -- ===================== СИСТЕМА ДОСТУПУ =====================
@@ -967,6 +967,15 @@ local function createPlayerESP(player)
 	if ESP_Elements[player] then return ESP_Elements[player] end
 	local t = {}
 	
+	-- Безпечний Highlight усередині захищеного ESP_Folder
+	t.Highlight = Instance.new("Highlight")
+	t.Highlight.Name = ObfuscatedNames.Highlight
+	t.Highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+	t.Highlight.FillTransparency = 0.5
+	t.Highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	t.Highlight.Enabled = false
+	t.Highlight.Parent = ESP_Folder
+
 	t.BoxFrame = Instance.new("Frame", ESP_Folder)
 	t.BoxFrame.BackgroundTransparency = 1
 	t.BoxStroke = Instance.new("UIStroke", t.BoxFrame)
@@ -1128,30 +1137,24 @@ RunService.RenderStepped:Connect(function(dt)
 				end
 
 				if HitboxEnabled and humanoid.Health > 0 then
-					rootPart.Size = Vector3.new(HitboxSize, HitboxSize, HitboxSize)
-					rootPart.Transparency = 0.7
-					rootPart.BrickColor = BrickColor.new("Really red")
-					rootPart.CanCollide = false
+					pcall(function()
+						rootPart.Size = Vector3.new(HitboxSize, HitboxSize, HitboxSize)
+						rootPart.CanCollide = false
+					end)
 				else
-					rootPart.Size = OriginalSizes[rootPart]
-					rootPart.Transparency = 1
-					rootPart.CanCollide = OriginalCollisions[rootPart]
+					pcall(function()
+						rootPart.Size = OriginalSizes[rootPart]
+						rootPart.CanCollide = OriginalCollisions[rootPart]
+					end)
 				end
 
 				if ESPSettings.Master and humanoid.Health > 0 then
 					if ESPSettings.Highlight then
-						local hl = pchar:FindFirstChild(ObfuscatedNames.Highlight)
-						if not hl then
-							hl = Instance.new("Highlight", pchar)
-							hl.Name = ObfuscatedNames.Highlight
-							hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-							hl.FillTransparency = 0.5
-							hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-						end
-						hl.FillColor = ESPColor
+						espUI.Highlight.Adornee = pchar
+						espUI.Highlight.FillColor = ESPColor
+						espUI.Highlight.Enabled = true
 					else
-						local hl = pchar:FindFirstChild(ObfuscatedNames.Highlight)
-						if hl then pcall(function() hl:Destroy() end) end
+						espUI.Highlight.Enabled = false
 					end
 
 					local hrpPos, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
@@ -1199,13 +1202,11 @@ RunService.RenderStepped:Connect(function(dt)
 						espUI.BoxFrame.Visible = false; espUI.NameLbl.Visible = false; espUI.HPBarBg.Visible = false; espUI.StudsLbl.Visible = false
 					end
 				else
-					local hl = pchar:FindFirstChild(ObfuscatedNames.Highlight)
-					if hl then pcall(function() hl:Destroy() end) end
+					espUI.Highlight.Enabled = false
 					espUI.BoxFrame.Visible = false; espUI.NameLbl.Visible = false; espUI.HPBarBg.Visible = false; espUI.StudsLbl.Visible = false
 				end
 			else
-				local hl = pchar and pchar:FindFirstChild(ObfuscatedNames.Highlight)
-				if hl then pcall(function() hl:Destroy() end) end
+				espUI.Highlight.Enabled = false
 				espUI.BoxFrame.Visible = false; espUI.NameLbl.Visible = false; espUI.HPBarBg.Visible = false; espUI.StudsLbl.Visible = false
 			end
 		end
