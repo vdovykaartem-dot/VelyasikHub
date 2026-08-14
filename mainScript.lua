@@ -1047,22 +1047,32 @@ RunService.RenderStepped:Connect(function(dt)
 
 	local char = LocalPlayer.Character
 	if char then
-		if SpeedEnabled then
-			local humanoid = char:FindFirstChildOfClass("Humanoid")
-			if humanoid and humanoid.WalkSpeed ~= TargetSpeed then humanoid.WalkSpeed = TargetSpeed end
-		end
-		if NoclipEnabled then
-			for _, part in pairs(char:GetDescendants()) do
-				if part:IsA("BasePart") then
-					if OriginalNoclipStates[part] == nil then OriginalNoclipStates[part] = part.CanCollide end
-					part.CanCollide = false 
-				end
-			end
-		end
-		
 		local hrp = char:FindFirstChild("HumanoidRootPart")
 		local hum = char:FindFirstChildOfClass("Humanoid")
+		
 		if hrp and hum then
+			-- 1. Безпечний Custom WalkSpeed (без зміни властивості WalkSpeed у Humanoid)
+			if SpeedEnabled and not FlyEnabled then
+				if hum.WalkSpeed ~= 16 then hum.WalkSpeed = 16 end
+				local moveDir = hum.MoveDirection
+				if moveDir.Magnitude > 0.01 then
+					local currentVel = hrp.AssemblyLinearVelocity
+					local desiredVel = moveDir * TargetSpeed
+					hrp.AssemblyLinearVelocity = Vector3.new(desiredVel.X, currentVel.Y, desiredVel.Z)
+				end
+			end
+
+			-- 2. Noclip
+			if NoclipEnabled then
+				for _, part in pairs(char:GetDescendants()) do
+					if part:IsA("BasePart") then
+						if OriginalNoclipStates[part] == nil then OriginalNoclipStates[part] = part.CanCollide end
+						part.CanCollide = false 
+					end
+				end
+			end
+			
+			-- 3. Fly (Безпечний метод через AssemblyLinearVelocity)
 			if FlyEnabled then
 				hum.PlatformStand = false
 				
@@ -1091,11 +1101,10 @@ RunService.RenderStepped:Connect(function(dt)
 				
 				vel = vel + Vector3.new(0, verticalVel, 0)
 				
-				-- Безпечний сучасний метод замість застарілих BodyMover об'єктів
 				hrp.AssemblyLinearVelocity = vel
 				hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + Vector3.new(camCFrame.LookVector.X, 0, camCFrame.LookVector.Z))
 			else
-				if not FreeCamEnabled then hum.PlatformStand = false end
+				if not FreeCamEnabled and not SpeedEnabled then hum.PlatformStand = false end
 			end
 		end
 	end
