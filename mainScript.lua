@@ -1,8 +1,8 @@
 -- =================================================================
--- ВЕЛЯСІК MENU v2.3 (Protected / Anti-Cheat Bypass)[cite: 3]
+-- ВЕЛЯСІК MENU v2.3 (Protected / Anti-Cheat Bypass)
 -- =================================================================
 
--- Функція для безпечного отримання сервісів (ховає посилання від анти-чита)[cite: 3]
+-- Функція для безпечного отримання сервісів (ховає посилання від анти-чита)
 local function getSvc(serviceName)
 	local s = game:GetService(serviceName)
 	return (cloneref and cloneref(s)) or s
@@ -21,7 +21,7 @@ local Lighting = getSvc("Lighting")
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
--- Генератор випадкових імен для приховування об'єктів від сканування[cite: 3]
+-- Генератор випадкових імен для приховування об'єктів від сканування
 local function RndName()
 	local chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 	local str = ""
@@ -35,12 +35,10 @@ end
 local ObfuscatedNames = {
 	GUI = RndName(),
 	FCPart = RndName(),
-	FlyGyro = RndName(),
-	FlyVel = RndName(),
 	Highlight = RndName()
 }
 
--- Використовуємо gethui() для приховування UI, якщо експлойт це підтримує[cite: 3]
+-- Використовуємо gethui() для приховування UI, якщо експлойт це підтримує
 local TargetGuiParent = (gethui and gethui()) or CoreGui
 
 -- ===================== СИСТЕМА ДОСТУПУ =====================
@@ -967,7 +965,6 @@ local function createPlayerESP(player)
 	if ESP_Elements[player] then return ESP_Elements[player] end
 	local t = {}
 	
-	-- Безпечний Highlight усередині захищеного ESP_Folder
 	t.Highlight = Instance.new("Highlight")
 	t.Highlight.Name = ObfuscatedNames.Highlight
 	t.Highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
@@ -1067,23 +1064,7 @@ RunService.RenderStepped:Connect(function(dt)
 		local hum = char:FindFirstChildOfClass("Humanoid")
 		if hrp and hum then
 			if FlyEnabled then
-				local flyGyro = hrp:FindFirstChild(ObfuscatedNames.FlyGyro)
-				local flyVel = hrp:FindFirstChild(ObfuscatedNames.FlyVel)
-				
-				if not flyGyro then
-					flyGyro = Instance.new("BodyGyro", hrp)
-					flyGyro.Name = ObfuscatedNames.FlyGyro
-					flyGyro.P = 9e4
-					flyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-					flyGyro.CFrame = hrp.CFrame
-					
-					flyVel = Instance.new("BodyVelocity", hrp)
-					flyVel.Name = ObfuscatedNames.FlyVel
-					flyVel.Velocity = Vector3.zero
-					flyVel.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-					
-					hum.PlatformStand = true
-				end
+				hum.PlatformStand = false
 				
 				local moveDir = hum.MoveDirection
 				local camCFrame = Camera.CFrame
@@ -1096,19 +1077,24 @@ RunService.RenderStepped:Connect(function(dt)
 					local rightInput = flatRight:Dot(moveDir)
 					
 					local flyDir = (camCFrame.LookVector * forwardInput) + (camCFrame.RightVector * rightInput)
-					if flyDir.Magnitude > 0 then vel = flyDir.Unit * PlayerSettings.FlySpeed end
+					if flyDir.Magnitude > 0 then 
+						vel = flyDir.Unit * PlayerSettings.FlySpeed 
+					end
 				end
 				
-				if UserInputService:IsKeyDown(Enum.KeyCode.Space) then vel = vel + Vector3.new(0, PlayerSettings.FlySpeed, 0) end
-				if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then vel = vel - Vector3.new(0, PlayerSettings.FlySpeed, 0) end
+				local verticalVel = 0
+				if UserInputService:IsKeyDown(Enum.KeyCode.Space) then 
+					verticalVel = PlayerSettings.FlySpeed 
+				elseif UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then 
+					verticalVel = -PlayerSettings.FlySpeed 
+				end
 				
-				flyGyro.CFrame = camCFrame
-				flyVel.Velocity = vel
+				vel = vel + Vector3.new(0, verticalVel, 0)
+				
+				-- Безпечний сучасний метод замість застарілих BodyMover об'єктів
+				hrp.AssemblyLinearVelocity = vel
+				hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + Vector3.new(camCFrame.LookVector.X, 0, camCFrame.LookVector.Z))
 			else
-				local fg = hrp:FindFirstChild(ObfuscatedNames.FlyGyro)
-				local fv = hrp:FindFirstChild(ObfuscatedNames.FlyVel)
-				if fg then pcall(function() fg:Destroy() end) end
-				if fv then pcall(function() fv:Destroy() end) end
 				if not FreeCamEnabled then hum.PlatformStand = false end
 			end
 		end
