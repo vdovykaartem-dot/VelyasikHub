@@ -17,6 +17,8 @@ local TweenService = getSvc("TweenService")
 local HttpService = getSvc("HttpService")
 local TeleportService = getSvc("TeleportService")
 local Lighting = getSvc("Lighting")
+local TextChatService = getSvc("TextChatService")
+local ReplicatedStorage = getSvc("ReplicatedStorage")
 
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
@@ -88,7 +90,8 @@ local NoFogEnabled, FullbrightEnabled, FOVChangerEnabled, CustomFOV = false, fal
 local FPSUnlockerEnabled, CamUnlockerEnabled = true, false
 local FreeCamEnabled, FreezeDuringEnabled, FC_Speed, fwdDown, bwdDown = false, false, 60, false, false
 
-local OriginalSizes, OriginalCollisions, OriginalNoclipStates = {}, {}, {}
+local OriginalSizes, OriginalNoclipStates = {}, {}
+local Scripters = {[LocalPlayer.UserId] = true} -- Таблиця для Scripter статусу
 
 -- ===================== ІНТЕРФЕЙС =====================
 local ScreenGui = Instance.new("ScreenGui")
@@ -356,17 +359,6 @@ local function createButtonUI(parent, text, callback)
 	Btn.MouseButton1Click:Connect(function() if callback then callback() end end)
 end
 
-local function createSectionTitle(parent, text)
-	local Lbl = Instance.new("TextLabel", parent)
-	Lbl.Size = UDim2.new(1, -12, 0, 25)
-	Lbl.BackgroundTransparency = 1
-	Lbl.Text = text
-	Lbl.Font = Enum.Font.GothamBold
-	Lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
-	Lbl.TextSize = 14
-	Lbl.TextXAlignment = Enum.TextXAlignment.Left
-end
-
 -- ===================== СТВОРЕННЯ ВКЛАДОК =====================
 local TabInfo = createTab("Info")
 local TabMain = createTab("Main")
@@ -378,7 +370,7 @@ local TabFreeCam = createTab("Free Camera")
 
 -- ===================== INFO ВКЛАДКА =====================
 local InfoHolder = Instance.new("Frame", TabInfo)
-InfoHolder.Size = UDim2.new(1, -12, 0, 180)
+InfoHolder.Size = UDim2.new(1, -12, 0, 160)
 InfoHolder.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
 Instance.new("UICorner", InfoHolder).CornerRadius = UDim.new(0, 8)
 
@@ -406,7 +398,7 @@ UserLbl.TextColor3 = Color3.fromRGB(150, 150, 150)
 UserLbl.TextXAlignment = Enum.TextXAlignment.Left
 
 local StatsFrame = Instance.new("Frame", InfoHolder)
-StatsFrame.Size = UDim2.new(1, -30, 0, 80)
+StatsFrame.Size = UDim2.new(1, -30, 0, 60)
 StatsFrame.Position = UDim2.new(0, 15, 0, 85)
 StatsFrame.BackgroundTransparency = 1
 local StatsLayout = Instance.new("UIListLayout", StatsFrame)
@@ -426,6 +418,94 @@ local FPSLabel = makeStatRow("FPS: Calculating...")
 local PingLabel = makeStatRow("Ping: Calculating...")
 makeStatRow("Player ID: " .. LocalPlayer.UserId)
 makeStatRow("Place ID: " .. game.PlaceId)
+
+-- СПИСОК ГРАВЦІВ (INFO)
+local PlayerListContainer = Instance.new("Frame", TabInfo)
+PlayerListContainer.Size = UDim2.new(1, -12, 0, 200)
+PlayerListContainer.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
+Instance.new("UICorner", PlayerListContainer).CornerRadius = UDim.new(0, 8)
+
+local ListTitle = Instance.new("TextLabel", PlayerListContainer)
+ListTitle.Size = UDim2.new(1, -20, 0, 30)
+ListTitle.Position = UDim2.new(0, 10, 0, 5)
+ListTitle.BackgroundTransparency = 1
+ListTitle.Text = "Server Players (Status)"
+ListTitle.Font = Enum.Font.GothamBold
+ListTitle.TextColor3 = Color3.fromRGB(220, 220, 220)
+ListTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+local PlayerScroll = Instance.new("ScrollingFrame", PlayerListContainer)
+PlayerScroll.Size = UDim2.new(1, -20, 1, -45)
+PlayerScroll.Position = UDim2.new(0, 10, 0, 35)
+PlayerScroll.BackgroundTransparency = 1
+PlayerScroll.ScrollBarThickness = 2
+PlayerScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+PlayerScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+local PlayerListLayoutUI = Instance.new("UIListLayout", PlayerScroll)
+PlayerListLayoutUI.Padding = UDim.new(0, 5)
+
+local function refreshInfoPlayerList()
+	if not PlayerScroll then return end
+	for _, child in pairs(PlayerScroll:GetChildren()) do
+		if child:IsA("Frame") then child:Destroy() end
+	end
+	
+	local allPlayers = Players:GetPlayers()
+	table.sort(allPlayers, function(a, b) return a.Name < b.Name end)
+
+	for _, p in pairs(allPlayers) do
+		local row = Instance.new("Frame", PlayerScroll)
+		row.Size = UDim2.new(1, -10, 0, 25)
+		row.BackgroundTransparency = 1
+		
+		local nameLbl = Instance.new("TextLabel", row)
+		nameLbl.Size = UDim2.new(0.6, 0, 1, 0)
+		nameLbl.BackgroundTransparency = 1
+		nameLbl.Text = p.Name .. (p == LocalPlayer and " (You)" or "")
+		nameLbl.TextColor3 = Color3.fromRGB(220, 220, 220)
+		nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+		nameLbl.Font = Enum.Font.GothamMedium
+		nameLbl.TextSize = 13
+		
+		local statusLbl = Instance.new("TextLabel", row)
+		statusLbl.Size = UDim2.new(0.4, 0, 1, 0)
+		statusLbl.Position = UDim2.new(0.6, 0, 0, 0)
+		statusLbl.BackgroundTransparency = 1
+		if Scripters[p.UserId] then
+			statusLbl.Text = "Scripter"
+			statusLbl.TextColor3 = Color3.fromRGB(50, 150, 255)
+		else
+			statusLbl.Text = "Neutral"
+			statusLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+		end
+		statusLbl.TextXAlignment = Enum.TextXAlignment.Right
+		statusLbl.Font = Enum.Font.GothamBold
+		statusLbl.TextSize = 13
+	end
+end
+
+local function onChatted(player, msg)
+	if msg == "/e v2_3_ping" then
+		Scripters[player.UserId] = true
+		refreshInfoPlayerList()
+	end
+end
+
+for _, p in pairs(Players:GetPlayers()) do p.Chatted:Connect(function(msg) onChatted(p, msg) end) end
+Players.PlayerAdded:Connect(function(p) p.Chatted:Connect(function(msg) onChatted(p, msg) end); refreshInfoPlayerList() end)
+Players.PlayerRemoving:Connect(function(p) Scripters[p.UserId] = nil; refreshInfoPlayerList() end)
+
+-- Відправка невидимого пінгу іншим гравцям із цим скриптом
+task.spawn(function()
+	pcall(function()
+		if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+			TextChatService.TextChannels.RBXGeneral:SendAsync("/e v2_3_ping")
+		else
+			ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer("/e v2_3_ping", "All")
+		end
+	end)
+end)
+refreshInfoPlayerList()
 
 -- ===================== MAIN ВКЛАДКА (ESP ТА ІНШЕ) =====================
 local ESPHeader = Instance.new("Frame", TabMain)
@@ -608,7 +688,11 @@ createToggle(TabPlayer, "Custom WalkSpeed", SpeedEnabled, function(s)
 end)
 createToggle(TabPlayer, "Noclip", NoclipEnabled, function(s) 
 	NoclipEnabled = s 
-	if not s and LocalPlayer.Character then
+	if s and LocalPlayer.Character then
+		for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+			if part:IsA("BasePart") then OriginalNoclipStates[part] = part.CanCollide end
+		end
+	elseif not s and LocalPlayer.Character then
 		for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
 			if part:IsA("BasePart") and OriginalNoclipStates[part] ~= nil then part.CanCollide = OriginalNoclipStates[part] end
 		end
@@ -832,6 +916,17 @@ Players.PlayerRemoving:Connect(function(player)
 	end
 end)
 
+-- Noclip (Перенесено в Stepped для повного Стелсу перед розрахунком фізики)
+RunService.Stepped:Connect(function()
+	if NoclipEnabled and LocalPlayer.Character then
+		for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.CanCollide = false
+			end
+		end
+	end
+end)
+
 local lastFpsTick = tick()
 local origAmbient = Lighting.Ambient
 local origFogEnd = Lighting.FogEnd
@@ -870,7 +965,6 @@ RunService.RenderStepped:Connect(function(dt)
 		local hum = char:FindFirstChildOfClass("Humanoid")
 		
 		if hrp and hum then
-			-- 1. Безпечний Custom WalkSpeed (без зміни властивості WalkSpeed у Humanoid)
 			if SpeedEnabled and not FlyEnabled then
 				if hum.WalkSpeed ~= 16 then hum.WalkSpeed = 16 end
 				local moveDir = hum.MoveDirection
@@ -880,21 +974,9 @@ RunService.RenderStepped:Connect(function(dt)
 					hrp.AssemblyLinearVelocity = Vector3.new(desiredVel.X, currentVel.Y, desiredVel.Z)
 				end
 			end
-
-			-- 2. Noclip
-			if NoclipEnabled then
-				for _, part in pairs(char:GetDescendants()) do
-					if part:IsA("BasePart") then
-						if OriginalNoclipStates[part] == nil then OriginalNoclipStates[part] = part.CanCollide end
-						part.CanCollide = false 
-					end
-				end
-			end
 			
-			-- 3. Fly (Безпечний метод через AssemblyLinearVelocity)
 			if FlyEnabled then
 				hum.PlatformStand = false
-				
 				local moveDir = hum.MoveDirection
 				local camCFrame = Camera.CFrame
 				local vel = Vector3.zero
@@ -906,20 +988,14 @@ RunService.RenderStepped:Connect(function(dt)
 					local rightInput = flatRight:Dot(moveDir)
 					
 					local flyDir = (camCFrame.LookVector * forwardInput) + (camCFrame.RightVector * rightInput)
-					if flyDir.Magnitude > 0 then 
-						vel = flyDir.Unit * PlayerSettings.FlySpeed 
-					end
+					if flyDir.Magnitude > 0 then vel = flyDir.Unit * PlayerSettings.FlySpeed end
 				end
 				
 				local verticalVel = 0
-				if UserInputService:IsKeyDown(Enum.KeyCode.Space) then 
-					verticalVel = PlayerSettings.FlySpeed 
-				elseif UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then 
-					verticalVel = -PlayerSettings.FlySpeed 
-				end
+				if UserInputService:IsKeyDown(Enum.KeyCode.Space) then verticalVel = PlayerSettings.FlySpeed 
+				elseif UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then verticalVel = -PlayerSettings.FlySpeed end
 				
 				vel = vel + Vector3.new(0, verticalVel, 0)
-				
 				hrp.AssemblyLinearVelocity = vel
 				hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + Vector3.new(camCFrame.LookVector.X, 0, camCFrame.LookVector.Z))
 			else
@@ -945,21 +1021,25 @@ RunService.RenderStepped:Connect(function(dt)
 				local humanoid = pchar:FindFirstChildOfClass("Humanoid")
 				local rootPart = pchar.HumanoidRootPart
 
-				if not OriginalSizes[rootPart] then
-					OriginalSizes[rootPart] = rootPart.Size
-					OriginalCollisions[rootPart] = rootPart.CanCollide
-				end
+				if not OriginalSizes[rootPart] then OriginalSizes[rootPart] = rootPart.Size end
 
+				-- Hitbox Expander (Фікс + Стелс-Метод)
 				if HitboxEnabled and humanoid.Health > 0 then
-					pcall(function()
-						rootPart.Size = Vector3.new(HitboxSize, HitboxSize, HitboxSize)
-						rootPart.CanCollide = false
-					end)
+					if rootPart.Size.X ~= HitboxSize then
+						pcall(function()
+							rootPart.Size = Vector3.new(HitboxSize, HitboxSize, HitboxSize)
+							rootPart.Massless = true -- Запобігає багам фізики і падінню персонажа
+							rootPart.CanCollide = false
+							rootPart.Transparency = 1 -- Зберігає невидимість деталі
+						end)
+					end
 				else
-					pcall(function()
-						rootPart.Size = OriginalSizes[rootPart]
-						rootPart.CanCollide = OriginalCollisions[rootPart]
-					end)
+					if rootPart.Size.X ~= OriginalSizes[rootPart].X then
+						pcall(function()
+							rootPart.Size = OriginalSizes[rootPart]
+							rootPart.Massless = false
+						end)
+					end
 				end
 
 				if ESPSettings.Master and humanoid.Health > 0 then
