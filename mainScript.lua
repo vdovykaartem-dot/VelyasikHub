@@ -90,6 +90,10 @@ local NoFogEnabled, FullbrightEnabled, FOVChangerEnabled, CustomFOV = false, fal
 local FPSUnlockerEnabled, CamUnlockerEnabled = true, false
 local FreeCamEnabled, FreezeDuringEnabled, FC_Speed, fwdDown, bwdDown = false, false, 60, false, false
 
+-- Spectate змінні
+local SpectateEnabled = false
+local SpectateTargetPlayer = nil
+
 local OriginalSizes, OriginalNoclipStates = {}, {}
 local Scripters = {[LocalPlayer.UserId] = true} -- Таблиця для Scripter статусу
 
@@ -495,7 +499,6 @@ for _, p in pairs(Players:GetPlayers()) do p.Chatted:Connect(function(msg) onCha
 Players.PlayerAdded:Connect(function(p) p.Chatted:Connect(function(msg) onChatted(p, msg) end); refreshInfoPlayerList() end)
 Players.PlayerRemoving:Connect(function(p) Scripters[p.UserId] = nil; refreshInfoPlayerList() end)
 
--- Відправка невидимого пінгу іншим гравцям із цим скриптом
 task.spawn(function()
 	pcall(function()
 		if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
@@ -507,7 +510,7 @@ task.spawn(function()
 end)
 refreshInfoPlayerList()
 
--- ===================== MAIN ВКЛАДКА (ESP ТА ІНШЕ) =====================
+-- ===================== MAIN ВКЛАДКА =====================
 local ESPHeader = Instance.new("Frame", TabMain)
 ESPHeader.Size = UDim2.new(1, -12, 0, 42)
 ESPHeader.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
@@ -651,11 +654,86 @@ createToggle(TabMain, "Hitbox Expander", HitboxEnabled, function(s) HitboxEnable
 createBox(TabMain, "Hitbox Size (Max 30)", 10, 1, 30, function(v) HitboxSize = v end)
 createToggle(TabMain, "Kick Security (Anti-Dev)", KickStuffEnabled, function(s) KickStuffEnabled = s end)
 
--- ===================== VISUALS, PLAYER, COMBAT =====================
+-- ===================== VISUALS (СПЕКТАТОР ТА ІНШЕ) =====================
 createToggle(TabVisuals, "No Fog", NoFogEnabled, function(s) NoFogEnabled = s end)
 createToggle(TabVisuals, "Fullbright", FullbrightEnabled, function(s) FullbrightEnabled = s end)
 createToggle(TabVisuals, "FOV Changer", FOVChangerEnabled, function(s) FOVChangerEnabled = s; if not s then Camera.FieldOfView = 70 end end)
 createBox(TabVisuals, "Custom FOV (10-120)", 90, 10, 120, function(v) CustomFOV = v end)
+
+-- SPECTATE СЕКЦІЯ
+createToggle(TabVisuals, "Spectate: on/off", SpectateEnabled, function(s)
+	SpectateEnabled = s
+	if not s then
+		SpectateTargetPlayer = nil
+		if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+			Camera.CameraSubject = LocalPlayer.Character.Humanoid
+		end
+	end
+end)
+
+local SpectateListContainer = Instance.new("Frame", TabVisuals)
+SpectateListContainer.Size = UDim2.new(1, -12, 0, 150)
+SpectateListContainer.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
+Instance.new("UICorner", SpectateListContainer).CornerRadius = UDim.new(0, 8)
+
+local SpecListTitle = Instance.new("TextLabel", SpectateListContainer)
+SpecListTitle.Size = UDim2.new(1, -20, 0, 30)
+SpecListTitle.Position = UDim2.new(0, 10, 0, 5)
+SpecListTitle.BackgroundTransparency = 1
+SpecListTitle.Text = "Players (Spectate Target)"
+SpecListTitle.Font = Enum.Font.GothamBold
+SpecListTitle.TextColor3 = Color3.fromRGB(220, 220, 220)
+SpecListTitle.TextXAlignment = Enum.TextXAlignment.Left
+SpecListTitle.TextSize = 13
+
+local SpecScroll = Instance.new("ScrollingFrame", SpectateListContainer)
+SpecScroll.Size = UDim2.new(1, -20, 1, -40)
+SpecScroll.Position = UDim2.new(0, 10, 0, 35)
+SpecScroll.BackgroundTransparency = 1
+SpecScroll.ScrollBarThickness = 2
+SpecScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+SpecScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+local SpecListLayoutUI = Instance.new("UIListLayout", SpecScroll)
+SpecListLayoutUI.Padding = UDim.new(0, 4)
+
+local function refreshSpectateList()
+	if not SpecScroll then return end
+	for _, child in pairs(SpecScroll:GetChildren()) do
+		if child:IsA("TextButton") then child:Destroy() end
+	end
+	
+	for _, p in pairs(Players:GetPlayers()) do
+		if p ~= LocalPlayer then
+			local btn = Instance.new("TextButton", SpecScroll)
+			btn.Size = UDim2.new(1, 0, 0, 30)
+			local isSelected = (SpectateTargetPlayer == p)
+			btn.BackgroundColor3 = isSelected and Color3.fromRGB(50, 205, 50) or Color3.fromRGB(35, 35, 35)
+			btn.Text = p.Name
+			btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			btn.Font = Enum.Font.GothamMedium
+			btn.TextSize = 12
+			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+			
+			btn.MouseButton1Click:Connect(function()
+				if SpectateTargetPlayer == p then
+					SpectateTargetPlayer = nil
+				else
+					SpectateTargetPlayer = p
+				end
+				refreshSpectateList()
+			end)
+		end
+	end
+end
+
+Players.PlayerAdded:Connect(function(p) refreshSpectateList() end)
+Players.PlayerRemoving:Connect(function(p)
+	if SpectateTargetPlayer == p then
+		SpectateTargetPlayer = nil
+	end
+	refreshSpectateList()
+end)
+refreshSpectateList()
 
 createButtonUI(TabVisuals, "Serverhop", function()
 	local servers = {}
@@ -916,7 +994,6 @@ Players.PlayerRemoving:Connect(function(player)
 	end
 end)
 
--- Noclip (Перенесено в Stepped для повного Стелсу перед розрахунком фізики)
 RunService.Stepped:Connect(function()
 	if NoclipEnabled and LocalPlayer.Character then
 		for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
@@ -945,6 +1022,14 @@ RunService.RenderStepped:Connect(function(dt)
 	if FOVChangerEnabled then Camera.FieldOfView = CustomFOV end
 	if FullbrightEnabled then Lighting.Ambient = Color3.new(1,1,1) else Lighting.Ambient = origAmbient end
 	if NoFogEnabled then Lighting.FogEnd = 100000 else Lighting.FogEnd = origFogEnd end
+
+	-- Обробка Spectate режиму
+	if SpectateEnabled and SpectateTargetPlayer and SpectateTargetPlayer.Character then
+		local hum = SpectateTargetPlayer.Character:FindFirstChildOfClass("Humanoid")
+		if hum then
+			Camera.CameraSubject = hum
+		end
+	end
 
 	if FreeCamEnabled then
 		local FCPart = workspace:FindFirstChild(ObfuscatedNames.FCPart)
@@ -999,7 +1084,7 @@ RunService.RenderStepped:Connect(function(dt)
 				hrp.AssemblyLinearVelocity = vel
 				hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + Vector3.new(camCFrame.LookVector.X, 0, camCFrame.LookVector.Z))
 			else
-				if not FreeCamEnabled and not SpeedEnabled then hum.PlatformStand = false end
+				if not FreeCamEnabled and not SpeedEnabled and not SpectateEnabled then hum.PlatformStand = false end
 			end
 		end
 	end
@@ -1023,21 +1108,19 @@ RunService.RenderStepped:Connect(function(dt)
 
 				if not OriginalSizes[rootPart] then OriginalSizes[rootPart] = rootPart.Size end
 
-				-- Hitbox Expander (Фікс + Стелс-Метод)
+				-- Оновлений Hitbox Expander (збільшує розмір та робить частину колізійною/прозорою для коректної реєстрації влучань)
 				if HitboxEnabled and humanoid.Health > 0 then
-					if rootPart.Size.X ~= HitboxSize then
-						pcall(function()
-							rootPart.Size = Vector3.new(HitboxSize, HitboxSize, HitboxSize)
-							rootPart.Massless = true -- Запобігає багам фізики і падінню персонажа
-							rootPart.CanCollide = false
-							rootPart.Transparency = 1 -- Зберігає невидимість деталі
-						end)
-					end
+					pcall(function()
+						rootPart.Size = Vector3.new(HitboxSize, HitboxSize, HitboxSize)
+						rootPart.Transparency = 0.75 -- Робимо злегка видимим, щоб ти бачив, що він працює
+						rootPart.CanCollide = false
+					end)
 				else
-					if rootPart.Size.X ~= OriginalSizes[rootPart].X then
+					if OriginalSizes[rootPart] then
 						pcall(function()
 							rootPart.Size = OriginalSizes[rootPart]
-							rootPart.Massless = false
+							rootPart.Transparency = 1
+							rootPart.CanCollide = false
 						end)
 					end
 				end
