@@ -1,5 +1,5 @@
 -- =================================================================
--- ВЕЛЯСІК MENU v2.3 (Protected / Anti-Cheat Bypass)
+-- AETHER HUB (Protected / Anti-Cheat Bypass)
 -- =================================================================
 
 -- Функція для безпечного отримання сервісів (ховає посилання від анти-чита)
@@ -51,11 +51,11 @@ if existingGui then
 end
 
 -- ===================== ЗБЕРЕЖЕННЯ КОНФІГІВ =====================
-local espConfigFile = "V_ESPConfig.json"
-local teamWhitelistFile = "V_TeamWhitelist.json"
-local playerConfigFile = "V_PlayerConfig.json"
+local espConfigFile = "AH_ESPConfig.json"
+local teamWhitelistFile = "AH_TeamWhitelist.json"
+local playerConfigFile = "AH_PlayerConfig.json"
 
-local ESPSettings = { Master = false, Highlight = true, Box = false, Name = false, HP = false, Studs = false, Color = {R = 255, G = 50, B = 50} }
+local ESPSettings = { Master = false, Highlight = true, Box = false, Name = false, HP = false, Studs = false, Color = {R = 0, G = 170, B = 255} }
 local PlayerSettings = { FlySpeed = 50 }
 
 if isfile and readfile and isfile(espConfigFile) then
@@ -150,7 +150,7 @@ ButtonStroke.Transparency = 0
 task.spawn(function()
 	while OpenButton and OpenButton.Parent do
 		local tweenInfo = TweenInfo.new(2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
-		local colors = {Color3.fromRGB(255,0,0), Color3.fromRGB(0,255,0), Color3.fromRGB(0,0,255), Color3.fromRGB(255,255,0), Color3.fromRGB(255,0,255)}
+		local colors = {Color3.fromRGB(0, 170, 255), Color3.fromRGB(0, 255, 255), Color3.fromRGB(0, 100, 255)}
 		for _, c in ipairs(colors) do
 			if not ButtonStroke or not ButtonStroke.Parent then break end
 			local t = TweenService:Create(ButtonStroke, tweenInfo, {Color = c}); pcall(function() t:Play(); t.Completed:Wait() end)
@@ -182,7 +182,7 @@ local TitleText = Instance.new("TextLabel", TopBar)
 TitleText.Size = UDim2.new(1, -50, 1, 0)
 TitleText.Position = UDim2.new(0, 15, 0, 0)
 TitleText.BackgroundTransparency = 1
-TitleText.Text = "Велясік Menu v2.3"
+TitleText.Text = "Aether Hub"
 TitleText.Font = Enum.Font.GothamBold
 TitleText.TextColor3 = Color3.fromRGB(240, 240, 240)
 TitleText.TextSize = 16
@@ -243,7 +243,7 @@ local function createTab(name, isRed)
 	TabBtn.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
 	TabBtn.Text = name
 	TabBtn.Font = Enum.Font.GothamMedium
-	TabBtn.TextColor3 = isRed and Color3.fromRGB(255, 80, 80) or Color3.fromRGB(160, 160, 160)
+	TabBtn.TextColor3 = isRed and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(160, 160, 160)
 	TabBtn.TextSize = 13
 	TabBtn.ZIndex = 3
 	Instance.new("UICorner", TabBtn).CornerRadius = UDim.new(0, 6)
@@ -264,17 +264,17 @@ local function createTab(name, isRed)
 	TabBtn.MouseButton1Click:Connect(function()
 		for _, t in pairs(tabs) do
 			t.page.Visible = false
-			TweenService:Create(t.btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(24, 24, 24), TextColor3 = t.isRed and Color3.fromRGB(255, 80, 80) or Color3.fromRGB(160, 160, 160)}):Play()
+			TweenService:Create(t.btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(24, 24, 24), TextColor3 = t.isRed and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(160, 160, 160)}):Play()
 		end
 		Page.Visible = true
-		TweenService:Create(TabBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(45, 45, 45), TextColor3 = isRed and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(255, 255, 255)}):Play()
+		TweenService:Create(TabBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(45, 45, 45), TextColor3 = isRed and Color3.fromRGB(0, 200, 255) or Color3.fromRGB(255, 255, 255)}):Play()
 	end)
 
 	table.insert(tabs, {btn = TabBtn, page = Page, isRed = isRed})
 	if #tabs == 1 then
 		Page.Visible = true
 		TabBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-		TabBtn.TextColor3 = isRed and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(255, 255, 255)
+		TabBtn.TextColor3 = isRed and Color3.fromRGB(0, 200, 255) or Color3.fromRGB(255, 255, 255)
 	end
 	return Page
 end
@@ -298,7 +298,7 @@ local function createToggle(parent, text, defaultState, callback)
 	local Button = Instance.new("TextButton", Holder)
 	Button.Size = UDim2.new(0, 36, 0, 22)
 	Button.Position = UDim2.new(1, -44, 0.5, -11)
-	Button.BackgroundColor3 = defaultState and Color3.fromRGB(50, 205, 50) or Color3.fromRGB(50, 50, 50)
+	Button.BackgroundColor3 = defaultState and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(50, 50, 50)
 	Button.Text = ""
 	Instance.new("UICorner", Button).CornerRadius = UDim.new(1, 0)
 
@@ -311,7 +311,7 @@ local function createToggle(parent, text, defaultState, callback)
 
 	Button.MouseButton1Click:Connect(function()
 		defaultState = not defaultState
-		local targetColor = defaultState and Color3.fromRGB(50, 205, 50) or Color3.fromRGB(50, 50, 50)
+		local targetColor = defaultState and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(50, 50, 50)
 		local targetPos = defaultState and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
 		TweenService:Create(Button, TweenInfo.new(0.15), {BackgroundColor3 = targetColor}):Play()
 		TweenService:Create(Circle, TweenInfo.new(0.15), {Position = targetPos}):Play()
@@ -489,7 +489,7 @@ local function refreshInfoPlayerList()
 end
 
 local function onChatted(player, msg)
-	if msg == "/e v2_3_ping" then
+	if msg == "/e ah_ping" then
 		Scripters[player.UserId] = true
 		refreshInfoPlayerList()
 	end
@@ -502,9 +502,9 @@ Players.PlayerRemoving:Connect(function(p) Scripters[p.UserId] = nil; refreshInf
 task.spawn(function()
 	pcall(function()
 		if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
-			TextChatService.TextChannels.RBXGeneral:SendAsync("/e v2_3_ping")
+			TextChatService.TextChannels.RBXGeneral:SendAsync("/e ah_ping")
 		else
-			ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer("/e v2_3_ping", "All")
+			ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer("/e ah_ping", "All")
 		end
 	end)
 end)
@@ -527,7 +527,7 @@ ESPLabel.TextXAlignment = Enum.TextXAlignment.Left
 local ESPBtn = Instance.new("TextButton", ESPHeader)
 ESPBtn.Size = UDim2.new(0, 36, 0, 22)
 ESPBtn.Position = UDim2.new(1, -85, 0.5, -11)
-ESPBtn.BackgroundColor3 = ESPSettings.Master and Color3.fromRGB(50, 205, 50) or Color3.fromRGB(50, 50, 50)
+ESPBtn.BackgroundColor3 = ESPSettings.Master and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(50, 50, 50)
 ESPBtn.Text = ""
 Instance.new("UICorner", ESPBtn).CornerRadius = UDim.new(1, 0)
 
@@ -539,7 +539,7 @@ Instance.new("UICorner", ESPCircle).CornerRadius = UDim.new(1, 0)
 
 ESPBtn.MouseButton1Click:Connect(function()
 	ESPSettings.Master = not ESPSettings.Master
-	local targetColor = ESPSettings.Master and Color3.fromRGB(50, 205, 50) or Color3.fromRGB(50, 50, 50)
+	local targetColor = ESPSettings.Master and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(50, 50, 50)
 	local targetPos = ESPSettings.Master and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
 	TweenService:Create(ESPBtn, TweenInfo.new(0.15), {BackgroundColor3 = targetColor}):Play()
 	TweenService:Create(ESPCircle, TweenInfo.new(0.15), {Position = targetPos}):Play()
@@ -643,7 +643,7 @@ local function addColorBtn(color)
 	end)
 end
 
-addColorBtn(Color3.fromRGB(255, 50, 50))
+addColorBtn(Color3.fromRGB(0, 170, 255))
 addColorBtn(Color3.fromRGB(50, 255, 50))
 addColorBtn(Color3.fromRGB(50, 150, 255))
 addColorBtn(Color3.fromRGB(255, 255, 50))
@@ -707,7 +707,7 @@ local function refreshSpectateList()
 			local btn = Instance.new("TextButton", SpecScroll)
 			btn.Size = UDim2.new(1, 0, 0, 30)
 			local isSelected = (SpectateTargetPlayer == p)
-			btn.BackgroundColor3 = isSelected and Color3.fromRGB(50, 205, 50) or Color3.fromRGB(35, 35, 35)
+			btn.BackgroundColor3 = isSelected and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(35, 35, 35)
 			btn.Text = p.Name
 			btn.TextColor3 = Color3.fromRGB(255, 255, 255)
 			btn.Font = Enum.Font.GothamMedium
@@ -830,7 +830,7 @@ local function refreshTeamCheckList()
 			local btn = Instance.new("TextButton", TabTeamCheck)
 			btn.Size = UDim2.new(1, -12, 0, 36)
 			local isWhitelisted = WhitelistedNames[p.Name] == true
-			btn.BackgroundColor3 = isWhitelisted and Color3.fromRGB(50, 205, 50) or Color3.fromRGB(210, 50, 50)
+			btn.BackgroundColor3 = isWhitelisted and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(210, 50, 50)
 			btn.Text = p.Name
 			btn.TextColor3 = Color3.fromRGB(255, 255, 255)
 			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
@@ -841,7 +841,7 @@ local function refreshTeamCheckList()
 					TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(210, 50, 50)}):Play()
 				else
 					WhitelistedNames[p.Name] = true
-					TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(50, 205, 50)}):Play()
+					TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(0, 170, 255)}):Play()
 				end
 				saveTeamWhitelist()
 			end)
