@@ -1,5 +1,5 @@
 -- =================================================================
--- CHRONO HUB (LinoriaLib UI + VelyasikCode Functions) - FIXED ICONS
+-- CHRONO HUB (LinoriaLib UI) - PREMIUM EDITION
 -- =================================================================
 
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
@@ -23,6 +23,18 @@ local Lighting = getSvc("Lighting")
 
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
+
+-- Лічильник запусків (Executions)
+local ExecCount = 1
+pcall(function()
+	if isfile and readfile and writefile then
+		if isfile("ChronoHub_Execs.txt") then
+			ExecCount = tonumber(readfile("ChronoHub_Execs.txt")) or 0
+			ExecCount = ExecCount + 1
+		end
+		writefile("ChronoHub_Execs.txt", tostring(ExecCount))
+	end
+end)
 
 -- Генератор випадкових імен
 local function RndName()
@@ -48,7 +60,7 @@ local ESPSettings = { Master = false, Highlight = true, Box = false, Name = fals
 local ESPColor = Color3.fromRGB(255, 50, 50)
 local HitboxEnabled, HitboxSize, KickStuffEnabled = false, 10, true
 local SpeedEnabled, TargetSpeed, NoclipEnabled, InfJumpEnabled, FlyEnabled, FlySpeed = false, 16, false, false, false, 50
-local AimbotEnabled, AimbotTarget, WallCheckEnabled, FOVEnabled, FOVRadius, Smoothness = false, "Head", true, false, 180, 0
+local AimbotEnabled, AimbotTarget, WallCheckEnabled, FOVEnabled, FOVRadius, Smoothness, RainbowFOVEnabled = false, "Head", true, false, 180, 0, false
 local NoFogEnabled, FullbrightEnabled, FOVChangerEnabled, CustomFOV = false, false, false, 90
 local FPSUnlockerEnabled, CamUnlockerEnabled = true, false
 local FreeCamEnabled, FreezeDuringEnabled, FC_Speed, fwdDown, bwdDown = false, false, 60, false, false
@@ -104,12 +116,11 @@ Library.ShowToggleFrameInKeybinds = true
 local Window = Library:CreateWindow({
 	Title = "Chrono Hub",
 	Footer = "Premium Edition",
-	Icon = 95816097006870,
+	Icon = "clock", -- Замінено іконку на годинник (Chrono)
 	NotifySide = "Right",
 	ShowCustomCursor = true,
 })
 
--- Вкладки з оновленими Lucide іконками ("house" замість "home")
 local Tabs = {
 	Info = Window:AddTab("Info", "info"),
 	Main = Window:AddTab("Main", "house"),
@@ -140,8 +151,7 @@ AvatarContainer.Parent = UserBox.Container
 local AvatarImage = Instance.new("ImageLabel")
 AvatarImage.Size = UDim2.new(0, 180, 0, 180)
 AvatarImage.Position = UDim2.new(0.5, -90, 0.5, -90)
-AvatarImage.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
-AvatarImage.BorderColor3 = Color3.fromRGB(45, 45, 45)
+AvatarImage.BackgroundTransparency = 1
 AvatarImage.Image = "rbxthumb://type=AvatarHeadShot&id=" .. LocalPlayer.UserId .. "&w=420&h=420"
 AvatarImage.Parent = AvatarContainer
 
@@ -152,11 +162,21 @@ local ImageStroke = Instance.new("UIStroke", AvatarImage)
 ImageStroke.Color = Color3.fromRGB(50, 50, 50)
 ImageStroke.Thickness = 1.5
 
+-- Фікс для миттєвого завантаження аватара без перевідкриття вкладки
+task.spawn(function()
+	task.wait(0.2)
+	AvatarContainer.Visible = false
+	AvatarContainer.Visible = true
+	task.wait(0.5)
+	AvatarImage.Visible = false
+	AvatarImage.Visible = true
+end)
+
 local InfoBox = Tabs.Info:AddRightGroupbox("Player Information")
 InfoBox:AddLabel("Username: " .. LocalPlayer.Name)
 InfoBox:AddLabel("Display Name: " .. LocalPlayer.DisplayName)
 InfoBox:AddLabel("Player ID: " .. LocalPlayer.UserId)
-InfoBox:AddLabel("Place ID: " .. game.PlaceId)
+InfoBox:AddLabel("Total Executions: " .. tostring(ExecCount)) -- Додано лічильник екзек'ютів
 
 local StatsBox = Tabs.Info:AddRightGroupbox("Game Stats")
 local FPSLabel = StatsBox:AddLabel("FPS: Calculating...")
@@ -277,6 +297,10 @@ AimbotBox:AddSlider("AimSmooth", { Text = "Aimbot Smoothness", Default = 0, Min 
 
 local FOVBox = Tabs.Combat:AddRightGroupbox("FOV")
 FOVBox:AddToggle("FOVCircle", { Text = "Show FOV Circle", Default = false }):OnChanged(function(v) FOVEnabled = v; FOVCircleUI.Visible = v end)
+FOVBox:AddToggle("RainbowFOV", { Text = "Rainbow FOV", Default = false }):OnChanged(function(v)
+	RainbowFOVEnabled = v
+	if not v and UIStroke then UIStroke.Color = Color3.fromRGB(255, 255, 255) end
+end)
 FOVBox:AddSlider("FOVCircleSize", { Text = "FOV Size", Default = 180, Min = 20, Max = 400, Rounding = 0 }):OnChanged(function(v)
 	FOVRadius = v
 	if FOVCircleUI then
@@ -329,7 +353,7 @@ FCBox:AddToggle("FCFreeze", { Text = "Freeze Character During Freecam", Default 
 end)
 FCBox:AddSlider("FCSpeed", { Text = "Free Cam Speed", Default = 60, Min = 10, Max = 300, Rounding = 0 }):OnChanged(function(v) FC_Speed = v end)
 
--- ===================== ВКЛАДКА: UI SETTINGS (Theme & Config) =====================
+-- ===================== ВКЛАДКА: UI SETTINGS =====================
 ThemeManager:SetLibrary(Library)
 SaveManager:SetLibrary(Library)
 SaveManager:IgnoreThemeSettings()
@@ -455,6 +479,11 @@ RunService.RenderStepped:Connect(function(dt)
 			PingLabel:SetText("Ping: " .. math.floor(LocalPlayer:GetNetworkPing() * 1000) .. " ms")
 		end)
 		lastFpsTick = tick()
+	end
+	
+	-- Rainbow FOV Логіка
+	if FOVEnabled and RainbowFOVEnabled and UIStroke then
+		UIStroke.Color = Color3.fromHSV((tick() % 3) / 3, 1, 1)
 	end
 
 	if FOVChangerEnabled then Camera.FieldOfView = CustomFOV end
