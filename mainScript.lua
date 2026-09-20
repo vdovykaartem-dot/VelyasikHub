@@ -1,5 +1,5 @@
 -- =================================================================
--- CHRONO HUB (LinoriaLib UI + VelyasikCode Functions) - UPDATED
+-- CHRONO HUB (LinoriaLib UI + VelyasikCode Functions) - FIXED ICONS
 -- =================================================================
 
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
@@ -109,10 +109,10 @@ local Window = Library:CreateWindow({
 	ShowCustomCursor = true,
 })
 
--- Вкладки з відповідними іконками
+-- Вкладки з оновленими Lucide іконками ("house" замість "home")
 local Tabs = {
 	Info = Window:AddTab("Info", "info"),
-	Main = Window:AddTab("Main", "home"),
+	Main = Window:AddTab("Main", "house"),
 	Visuals = Window:AddTab("Visuals", "eye"),
 	Player = Window:AddTab("Player", "user"),
 	Combat = Window:AddTab("Combat", "swords"),
@@ -130,7 +130,6 @@ local function GetPlayerNames()
 end
 
 -- ===================== ВКЛАДКА: INFO =====================
--- Зліва: Аватар гравця
 local UserBox = Tabs.Info:AddLeftGroupbox("User Profile")
 
 local AvatarContainer = Instance.new("Frame")
@@ -153,14 +152,12 @@ local ImageStroke = Instance.new("UIStroke", AvatarImage)
 ImageStroke.Color = Color3.fromRGB(50, 50, 50)
 ImageStroke.Thickness = 1.5
 
--- Справа: Інформація про гравця
 local InfoBox = Tabs.Info:AddRightGroupbox("Player Information")
 InfoBox:AddLabel("Username: " .. LocalPlayer.Name)
 InfoBox:AddLabel("Display Name: " .. LocalPlayer.DisplayName)
 InfoBox:AddLabel("Player ID: " .. LocalPlayer.UserId)
 InfoBox:AddLabel("Place ID: " .. game.PlaceId)
 
--- Справа: Статистика гри (FPS та Ping)
 local StatsBox = Tabs.Info:AddRightGroupbox("Game Stats")
 local FPSLabel = StatsBox:AddLabel("FPS: Calculating...")
 local PingLabel = StatsBox:AddLabel("Ping: Calculating...")
