@@ -20,6 +20,7 @@ local UserInputService = getSvc("UserInputService")
 local TeleportService = getSvc("TeleportService")
 local HttpService = getSvc("HttpService")
 local Lighting = getSvc("Lighting")
+local ContentProvider = getSvc("ContentProvider")
 
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
@@ -62,6 +63,8 @@ local HitboxEnabled, HitboxSize, KickStuffEnabled = false, 10, true
 local SpeedEnabled, TargetSpeed, NoclipEnabled, InfJumpEnabled, FlyEnabled, FlySpeed = false, 16, false, false, false, 50
 local AimbotEnabled, AimbotTarget, WallCheckEnabled, FOVEnabled, FOVRadius, Smoothness, RainbowFOVEnabled = false, "Head", true, false, 180, 0, false
 local NoFogEnabled, FullbrightEnabled, FOVChangerEnabled, CustomFOV = false, false, false, 90
+local NoCamShakeEnabled, NoCamBobbingEnabled = false, false
+local EnableJumpToggle = false
 local FPSUnlockerEnabled, CamUnlockerEnabled = true, false
 local FreeCamEnabled, FreezeDuringEnabled, FC_Speed, fwdDown, bwdDown = false, false, 60, false, false
 local SpectateEnabled, SpectateTargetPlayer = false, nil
@@ -116,7 +119,7 @@ Library.ShowToggleFrameInKeybinds = true
 local Window = Library:CreateWindow({
 	Title = "Chrono Hub",
 	Footer = "Premium Edition",
-	Icon = "clock", -- Замінено іконку на годинник (Chrono)
+	Icon = "clock",
 	NotifySide = "Right",
 	ShowCustomCursor = true,
 })
@@ -152,7 +155,6 @@ local AvatarImage = Instance.new("ImageLabel")
 AvatarImage.Size = UDim2.new(0, 180, 0, 180)
 AvatarImage.Position = UDim2.new(0.5, -90, 0.5, -90)
 AvatarImage.BackgroundTransparency = 1
-AvatarImage.Image = "rbxthumb://type=AvatarHeadShot&id=" .. LocalPlayer.UserId .. "&w=420&h=420"
 AvatarImage.Parent = AvatarContainer
 
 local ImageCorner = Instance.new("UICorner", AvatarImage)
@@ -162,21 +164,28 @@ local ImageStroke = Instance.new("UIStroke", AvatarImage)
 ImageStroke.Color = Color3.fromRGB(50, 50, 50)
 ImageStroke.Thickness = 1.5
 
--- Фікс для миттєвого завантаження аватара без перевідкриття вкладки
+-- Офіційне отримання та попереднє завантаження аватара
 task.spawn(function()
-	task.wait(0.2)
-	AvatarContainer.Visible = false
-	AvatarContainer.Visible = true
-	task.wait(0.5)
-	AvatarImage.Visible = false
-	AvatarImage.Visible = true
+	local ok, content = pcall(function()
+		return Players:GetUserThumbnailAsync(
+			LocalPlayer.UserId,
+			Enum.ThumbnailType.HeadShot,
+			Enum.ThumbnailSize.Size420x420
+		)
+	end)
+	if ok and content then
+		AvatarImage.Image = content
+		pcall(function() ContentProvider:PreloadAsync({AvatarImage}) end)
+	else
+		AvatarImage.Image = "rbxthumb://type=AvatarHeadShot&id=" .. LocalPlayer.UserId .. "&w=420&h=420"
+	end
 end)
 
 local InfoBox = Tabs.Info:AddRightGroupbox("Player Information")
 InfoBox:AddLabel("Username: " .. LocalPlayer.Name)
 InfoBox:AddLabel("Display Name: " .. LocalPlayer.DisplayName)
 InfoBox:AddLabel("Player ID: " .. LocalPlayer.UserId)
-InfoBox:AddLabel("Total Executions: " .. tostring(ExecCount)) -- Додано лічильник екзек'ютів
+InfoBox:AddLabel("Total Executions: " .. tostring(ExecCount))
 
 local StatsBox = Tabs.Info:AddRightGroupbox("Game Stats")
 local FPSLabel = StatsBox:AddLabel("FPS: Calculating...")
@@ -197,15 +206,21 @@ ESPBox:AddToggle("ESPName", { Text = "ESP Name", Default = false }):OnChanged(fu
 ESPBox:AddToggle("ESPHP", { Text = "ESP Health", Default = false }):OnChanged(function(v) ESPSettings.HP = v end)
 ESPBox:AddToggle("ESPStuds", { Text = "ESP Distance (Studs)", Default = false }):OnChanged(function(v) ESPSettings.Studs = v end)
 
-local HitboxBox = Tabs.Main:AddRightGroupbox("Hitbox Expander")
-HitboxBox:AddToggle("Hitbox", { Text = "Enable Hitbox", Default = false }):OnChanged(function(v) HitboxEnabled = v end)
-HitboxBox:AddSlider("HitboxSize", { Text = "Hitbox Size", Default = 10, Min = 1, Max = 30, Rounding = 0 }):OnChanged(function(v) HitboxSize = v end)
-HitboxBox:AddToggle("KickSec", { Text = "Kick Security", Default = true }):OnChanged(function(v) KickStuffEnabled = v end)
+local MainControlsBox = Tabs.Main:AddRightGroupbox("Controls & Hitbox")
+MainControlsBox:AddToggle("EnableJump", { Text = "Enable Jump", Default = false }):OnChanged(function(v)
+	EnableJumpToggle = v
+end)
+
+MainControlsBox:AddToggle("Hitbox", { Text = "Enable Hitbox", Default = false }):OnChanged(function(v) HitboxEnabled = v end)
+MainControlsBox:AddSlider("HitboxSize", { Text = "Hitbox Size", Default = 10, Min = 1, Max = 30, Rounding = 0 }):OnChanged(function(v) HitboxSize = v end)
+MainControlsBox:AddToggle("KickSec", { Text = "Kick Security", Default = true }):OnChanged(function(v) KickStuffEnabled = v end)
 
 -- ===================== ВКЛАДКА: VISUALS =====================
-local EnvBox = Tabs.Visuals:AddLeftGroupbox("Environment")
+local EnvBox = Tabs.Visuals:AddLeftGroupbox("Environment & Camera")
 EnvBox:AddToggle("NoFog", { Text = "No Fog", Default = false }):OnChanged(function(v) NoFogEnabled = v end)
 EnvBox:AddToggle("Fullbright", { Text = "Fullbright", Default = false }):OnChanged(function(v) FullbrightEnabled = v end)
+EnvBox:AddToggle("NoCamShake", { Text = "No Camera Shake", Default = false }):OnChanged(function(v) NoCamShakeEnabled = v end)
+EnvBox:AddToggle("NoCamBobbing", { Text = "No Camera Bobbing", Default = false }):OnChanged(function(v) NoCamBobbingEnabled = v end)
 EnvBox:AddToggle("FOVChanger", { Text = "FOV Changer", Default = false }):OnChanged(function(v) 
     FOVChangerEnabled = v; if not v then Camera.FieldOfView = 70 end 
 end)
@@ -481,7 +496,7 @@ RunService.RenderStepped:Connect(function(dt)
 		lastFpsTick = tick()
 	end
 	
-	-- Rainbow FOV Логіка
+	-- Rainbow FOV
 	if FOVEnabled and RainbowFOVEnabled and UIStroke then
 		UIStroke.Color = Color3.fromHSV((tick() % 3) / 3, 1, 1)
 	end
@@ -489,6 +504,35 @@ RunService.RenderStepped:Connect(function(dt)
 	if FOVChangerEnabled then Camera.FieldOfView = CustomFOV end
 	if FullbrightEnabled then Lighting.Ambient = Color3.new(1,1,1) else Lighting.Ambient = origAmbient end
 	if NoFogEnabled then Lighting.FogEnd = 100000 else Lighting.FogEnd = origFogEnd end
+
+	-- Логіка Enable Jump
+	local pGui = LocalPlayer:FindFirstChild("PlayerGui")
+	local customJumpBtn = pGui and pGui:FindFirstChild("MainGui")
+		and pGui.MainGui:FindFirstChild("MainFrame")
+		and pGui.MainGui.MainFrame:FindFirstChild("MobileButtons")
+		and pGui.MainGui.MainFrame.MobileButtons:FindFirstChild("JumpButton")
+
+	if customJumpBtn then
+		customJumpBtn.Visible = EnableJumpToggle
+	end
+
+	if EnableJumpToggle and LocalPlayer.Character then
+		local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		if hum then
+			hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+			if hum.JumpPower == 0 then hum.JumpPower = 50 end
+		end
+	end
+
+	-- No Camera Shake & No Camera Bobbing
+	if LocalPlayer.Character then
+		local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		if hum then
+			if NoCamBobbingEnabled or NoCamShakeEnabled then
+				hum.CameraOffset = Vector3.zero
+			end
+		end
+	end
 
 	if SpectateEnabled and SpectateTargetPlayer and SpectateTargetPlayer.Character then
 		local hum = SpectateTargetPlayer.Character:FindFirstChildOfClass("Humanoid")
@@ -652,7 +696,7 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 
 UserInputService.JumpRequest:Connect(function()
-	if InfJumpEnabled and LocalPlayer.Character then
+	if (InfJumpEnabled or EnableJumpToggle) and LocalPlayer.Character then
 		local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
 		if humanoid then pcall(function() humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end) end
 	end
