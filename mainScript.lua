@@ -1,5 +1,5 @@
 -- =================================================================
--- CHRONO HUB (LinoriaLib UI + VelyasikCode Functions) - FIXED
+-- CHRONO HUB (LinoriaLib UI + VelyasikCode Functions) - UPDATED
 -- =================================================================
 
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
@@ -109,20 +109,20 @@ local Window = Library:CreateWindow({
 	ShowCustomCursor = true,
 })
 
--- Вкладки без іконок, щоб уникнути помилок з відображенням
+-- Вкладки з відповідними іконками
 local Tabs = {
-	Info = Window:AddTab("Info"),
-	Main = Window:AddTab("Main"),
-	Visuals = Window:AddTab("Visuals"),
-	Player = Window:AddTab("Player"),
-	Combat = Window:AddTab("Combat"),
-	TeamCheck = Window:AddTab("Team Check"),
-	FreeCam = Window:AddTab("Free Camera"),
-	UISettings = Window:AddTab("UI Settings"),
+	Info = Window:AddTab("Info", "info"),
+	Main = Window:AddTab("Main", "home"),
+	Visuals = Window:AddTab("Visuals", "eye"),
+	Player = Window:AddTab("Player", "user"),
+	Combat = Window:AddTab("Combat", "swords"),
+	TeamCheck = Window:AddTab("Team Check", "users"),
+	FreeCam = Window:AddTab("Free Camera", "camera"),
+	UISettings = Window:AddTab("UI Settings", "settings"),
 }
 
 local function GetPlayerNames()
-    local names = {"None"} -- Завжди маємо хоча б 1 елемент, щоб Dropdown не ламався
+    local names = {"None"}
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= LocalPlayer then table.insert(names, p.Name) end
     end
@@ -130,12 +130,37 @@ local function GetPlayerNames()
 end
 
 -- ===================== ВКЛАДКА: INFO =====================
-local InfoBox = Tabs.Info:AddLeftGroupbox("Player Information")
+-- Зліва: Аватар гравця
+local UserBox = Tabs.Info:AddLeftGroupbox("User Profile")
+
+local AvatarContainer = Instance.new("Frame")
+AvatarContainer.Size = UDim2.new(1, 0, 0, 200)
+AvatarContainer.BackgroundTransparency = 1
+AvatarContainer.Parent = UserBox.Container
+
+local AvatarImage = Instance.new("ImageLabel")
+AvatarImage.Size = UDim2.new(0, 180, 0, 180)
+AvatarImage.Position = UDim2.new(0.5, -90, 0.5, -90)
+AvatarImage.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+AvatarImage.BorderColor3 = Color3.fromRGB(45, 45, 45)
+AvatarImage.Image = "rbxthumb://type=AvatarHeadShot&id=" .. LocalPlayer.UserId .. "&w=420&h=420"
+AvatarImage.Parent = AvatarContainer
+
+local ImageCorner = Instance.new("UICorner", AvatarImage)
+ImageCorner.CornerRadius = UDim.new(0, 10)
+
+local ImageStroke = Instance.new("UIStroke", AvatarImage)
+ImageStroke.Color = Color3.fromRGB(50, 50, 50)
+ImageStroke.Thickness = 1.5
+
+-- Справа: Інформація про гравця
+local InfoBox = Tabs.Info:AddRightGroupbox("Player Information")
 InfoBox:AddLabel("Username: " .. LocalPlayer.Name)
 InfoBox:AddLabel("Display Name: " .. LocalPlayer.DisplayName)
 InfoBox:AddLabel("Player ID: " .. LocalPlayer.UserId)
 InfoBox:AddLabel("Place ID: " .. game.PlaceId)
 
+-- Справа: Статистика гри (FPS та Ping)
 local StatsBox = Tabs.Info:AddRightGroupbox("Game Stats")
 local FPSLabel = StatsBox:AddLabel("FPS: Calculating...")
 local PingLabel = StatsBox:AddLabel("Ping: Calculating...")
@@ -146,7 +171,6 @@ local ESPBox = Tabs.Main:AddLeftGroupbox("ESP Settings")
 local ESPMasterTog = ESPBox:AddToggle("ESPMaster", { Text = "Enable ESP", Default = false })
 ESPMasterTog:OnChanged(function(v) ESPSettings.Master = v end)
 
--- ColorPicker потрібно прив'язувати до Toggle, інакше скрипт ламається
 ESPMasterTog:AddColorPicker("ESPColor", { Default = Color3.fromRGB(255, 50, 50), Title = "ESP Color" })
 Library.Options.ESPColor:OnChanged(function() ESPColor = Library.Options.ESPColor.Value end)
 
