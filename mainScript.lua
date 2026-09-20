@@ -1,5 +1,5 @@
 -- =================================================================
--- CHRONO HUB (LinoriaLib UI + VelyasikCode Functions)
+-- CHRONO HUB (LinoriaLib UI + VelyasikCode Functions) - FIXED
 -- =================================================================
 
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
@@ -17,13 +17,9 @@ local CoreGui = getSvc("CoreGui")
 local Players = getSvc("Players")
 local RunService = getSvc("RunService")
 local UserInputService = getSvc("UserInputService")
-local GuiService = getSvc("GuiService")
-local TweenService = getSvc("TweenService")
-local HttpService = getSvc("HttpService")
 local TeleportService = getSvc("TeleportService")
+local HttpService = getSvc("HttpService")
 local Lighting = getSvc("Lighting")
-local TextChatService = getSvc("TextChatService")
-local ReplicatedStorage = getSvc("ReplicatedStorage")
 
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
@@ -58,8 +54,7 @@ local FPSUnlockerEnabled, CamUnlockerEnabled = true, false
 local FreeCamEnabled, FreezeDuringEnabled, FC_Speed, fwdDown, bwdDown = false, false, 60, false, false
 local SpectateEnabled, SpectateTargetPlayer = false, nil
 local WhitelistedNames = {}
-local OriginalSizes, OriginalNoclipStates = {}, {}
-local Scripters = {[LocalPlayer.UserId] = true}
+local OriginalSizes, OriginalNoclipStates = {}
 
 -- ===================== OVERLAY GUI ДЛЯ ESP І FOV =====================
 local TargetGuiParent = (gethui and gethui()) or CoreGui
@@ -93,16 +88,9 @@ FCMobileUI.BackgroundTransparency = 1
 FCMobileUI.Visible = false
 
 local btnFwd = Instance.new("TextButton", FCMobileUI)
-btnFwd.Size = UDim2.new(1, 0, 0.45, 0)
-btnFwd.BackgroundColor3 = Color3.fromRGB(30,30,30)
-btnFwd.Text = "▲"; btnFwd.TextColor3 = Color3.fromRGB(255,255,255); btnFwd.TextScaled = true; btnFwd.BackgroundTransparency = 0.5
-Instance.new("UICorner", btnFwd).CornerRadius = UDim.new(0.2,0)
+btnFwd.Size = UDim2.new(1, 0, 0.45, 0); btnFwd.BackgroundColor3 = Color3.fromRGB(30,30,30); btnFwd.Text = "▲"; btnFwd.TextColor3 = Color3.fromRGB(255,255,255); btnFwd.TextScaled = true; btnFwd.BackgroundTransparency = 0.5; Instance.new("UICorner", btnFwd).CornerRadius = UDim.new(0.2,0)
 local btnBwd = Instance.new("TextButton", FCMobileUI)
-btnBwd.Size = UDim2.new(1, 0, 0.45, 0)
-btnBwd.Position = UDim2.new(0, 0, 0.55, 0)
-btnBwd.BackgroundColor3 = Color3.fromRGB(30,30,30)
-btnBwd.Text = "▼"; btnBwd.TextColor3 = Color3.fromRGB(255,255,255); btnBwd.TextScaled = true; btnBwd.BackgroundTransparency = 0.5
-Instance.new("UICorner", btnBwd).CornerRadius = UDim.new(0.2,0)
+btnBwd.Size = UDim2.new(1, 0, 0.45, 0); btnBwd.Position = UDim2.new(0, 0, 0.55, 0); btnBwd.BackgroundColor3 = Color3.fromRGB(30,30,30); btnBwd.Text = "▼"; btnBwd.TextColor3 = Color3.fromRGB(255,255,255); btnBwd.TextScaled = true; btnBwd.BackgroundTransparency = 0.5; Instance.new("UICorner", btnBwd).CornerRadius = UDim.new(0.2,0)
 
 btnFwd.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.Touch or i.UserInputType == Enum.UserInputType.MouseButton1 then fwdDown = true end end)
 btnFwd.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.Touch or i.UserInputType == Enum.UserInputType.MouseButton1 then fwdDown = false end end)
@@ -121,20 +109,20 @@ local Window = Library:CreateWindow({
 	ShowCustomCursor = true,
 })
 
+-- Вкладки без іконок, щоб уникнути помилок з відображенням
 local Tabs = {
-	Info = Window:AddTab("Info", "info"),
-	Main = Window:AddTab("Main", "home"),
-	Visuals = Window:AddTab("Visuals", "eye"),
-	Player = Window:AddTab("Player", "user"),
-	Combat = Window:AddTab("Combat", "swords"),
-	TeamCheck = Window:AddTab("Team Check", "users"),
-	FreeCam = Window:AddTab("Free Camera", "camera"),
-	UISettings = Window:AddTab("UI Settings", "settings"),
+	Info = Window:AddTab("Info"),
+	Main = Window:AddTab("Main"),
+	Visuals = Window:AddTab("Visuals"),
+	Player = Window:AddTab("Player"),
+	Combat = Window:AddTab("Combat"),
+	TeamCheck = Window:AddTab("Team Check"),
+	FreeCam = Window:AddTab("Free Camera"),
+	UISettings = Window:AddTab("UI Settings"),
 }
 
--- Функція для отримання імен гравців для Dropdowns
 local function GetPlayerNames()
-    local names = {}
+    local names = {"None"} -- Завжди маємо хоча б 1 елемент, щоб Dropdown не ламався
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= LocalPlayer then table.insert(names, p.Name) end
     end
@@ -151,31 +139,27 @@ InfoBox:AddLabel("Place ID: " .. game.PlaceId)
 local StatsBox = Tabs.Info:AddRightGroupbox("Game Stats")
 local FPSLabel = StatsBox:AddLabel("FPS: Calculating...")
 local PingLabel = StatsBox:AddLabel("Ping: Calculating...")
-local ScripterLabel = StatsBox:AddLabel("Scripters detected: None")
-
-local function updateScriptersLabel()
-    local scripterNames = {}
-    for uid, _ in pairs(Scripters) do
-        local p = Players:GetPlayerByUserId(uid)
-        if p then table.insert(scripterNames, p.Name) end
-    end
-    ScripterLabel:SetText("Scripters detected: " .. table.concat(scripterNames, ", "))
-end
 
 -- ===================== ВКЛАДКА: MAIN =====================
 local ESPBox = Tabs.Main:AddLeftGroupbox("ESP Settings")
-ESPBox:AddToggle("ESPMaster", { Text = "Enable ESP", Default = false }):OnChanged(function(v) ESPSettings.Master = v end)
+
+local ESPMasterTog = ESPBox:AddToggle("ESPMaster", { Text = "Enable ESP", Default = false })
+ESPMasterTog:OnChanged(function(v) ESPSettings.Master = v end)
+
+-- ColorPicker потрібно прив'язувати до Toggle, інакше скрипт ламається
+ESPMasterTog:AddColorPicker("ESPColor", { Default = Color3.fromRGB(255, 50, 50), Title = "ESP Color" })
+Library.Options.ESPColor:OnChanged(function() ESPColor = Library.Options.ESPColor.Value end)
+
 ESPBox:AddToggle("ESPHighlight", { Text = "ESP Highlight", Default = true }):OnChanged(function(v) ESPSettings.Highlight = v end)
 ESPBox:AddToggle("ESPBox", { Text = "ESP Box", Default = false }):OnChanged(function(v) ESPSettings.Box = v end)
 ESPBox:AddToggle("ESPName", { Text = "ESP Name", Default = false }):OnChanged(function(v) ESPSettings.Name = v end)
 ESPBox:AddToggle("ESPHP", { Text = "ESP Health", Default = false }):OnChanged(function(v) ESPSettings.HP = v end)
 ESPBox:AddToggle("ESPStuds", { Text = "ESP Distance (Studs)", Default = false }):OnChanged(function(v) ESPSettings.Studs = v end)
-ESPBox:AddColorPicker("ESPColor", { Default = Color3.fromRGB(255, 50, 50), Title = "ESP Color" }):OnChanged(function(v) ESPColor = v end)
 
 local HitboxBox = Tabs.Main:AddRightGroupbox("Hitbox Expander")
 HitboxBox:AddToggle("Hitbox", { Text = "Enable Hitbox", Default = false }):OnChanged(function(v) HitboxEnabled = v end)
 HitboxBox:AddSlider("HitboxSize", { Text = "Hitbox Size", Default = 10, Min = 1, Max = 30, Rounding = 0 }):OnChanged(function(v) HitboxSize = v end)
-HitboxBox:AddToggle("KickSec", { Text = "Kick Security (Anti-Dev)", Default = true }):OnChanged(function(v) KickStuffEnabled = v end)
+HitboxBox:AddToggle("KickSec", { Text = "Kick Security", Default = true }):OnChanged(function(v) KickStuffEnabled = v end)
 
 -- ===================== ВКЛАДКА: VISUALS =====================
 local EnvBox = Tabs.Visuals:AddLeftGroupbox("Environment")
@@ -198,12 +182,12 @@ SpecBox:AddToggle("SpectateToggle", { Text = "Enable Spectate", Default = false 
 end)
 local SpectateDropdown = SpecBox:AddDropdown("SpectateTarget", {
 	Values = GetPlayerNames(),
-	Default = 0,
+	Default = 1,
 	Multi = false,
 	Text = "Target Player"
 })
 SpectateDropdown:OnChanged(function(v)
-    if v then SpectateTargetPlayer = Players:FindFirstChild(v) end
+    if v and v ~= "None" then SpectateTargetPlayer = Players:FindFirstChild(v) else SpectateTargetPlayer = nil end
 end)
 
 local MiscBox = Tabs.Visuals:AddRightGroupbox("Misc Settings")
@@ -213,7 +197,7 @@ end)
 MiscBox:AddToggle("CamUnlock", { Text = "Camera Unlocker", Default = false }):OnChanged(function(v) 
     CamUnlockerEnabled = v; LocalPlayer.CameraMaxZoomDistance = v and 1000 or 128 
 end)
-MiscBox:AddButton({Text = "Serverhop", Func = function()
+MiscBox:AddButton("Serverhop", function()
 	local servers = {}
 	local req = (syn and syn.request) or request or http_request or (fluxus and fluxus.request)
 	if req then
@@ -222,17 +206,17 @@ MiscBox:AddButton({Text = "Serverhop", Func = function()
 			if response and response.Body then
 				local body = HttpService:JSONDecode(response.Body)
 				for _, v in ipairs(body.data) do
-					if v.playing < v.maxPlayers and v.id ~= game.JobId then table.insert(servers, v.id) end
+					if v.playing and v.maxPlayers and v.playing < v.maxPlayers and v.id ~= game.JobId then table.insert(servers, v.id) end
 				end
 			end
 		end)
 		if #servers > 0 then TeleportService:TeleportToPlaceInstance(game.PlaceId, servers[math.random(1, #servers)], LocalPlayer); return end
 	end
 	TeleportService:Teleport(game.PlaceId, LocalPlayer)
-end})
-MiscBox:AddButton({Text = "Rejoin Server", Func = function()
+end)
+MiscBox:AddButton("Rejoin Server", function()
     TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer) 
-end})
+end)
 
 -- ===================== ВКЛАДКА: PLAYER =====================
 local MoveBox = Tabs.Player:AddLeftGroupbox("Movement")
@@ -242,7 +226,7 @@ MoveBox:AddToggle("WalkSpeedTog", { Text = "Custom WalkSpeed", Default = false }
 		LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = 16
 	end
 end)
-MoveBox:AddSlider("WalkSpeedVal", { Text = "WalkSpeed Value", Default = 16, Min = 1, Max = 1000, Rounding = 0 }):OnChanged(function(v) TargetSpeed = v end)
+MoveBox:AddSlider("WalkSpeedVal", { Text = "WalkSpeed Value", Default = 16, Min = 1, Max = 100, Rounding = 0 }):OnChanged(function(v) TargetSpeed = v end)
 
 MoveBox:AddToggle("Noclip", { Text = "Noclip", Default = false }):OnChanged(function(v)
 	NoclipEnabled = v 
@@ -284,15 +268,13 @@ end)
 local TeamBox = Tabs.TeamCheck:AddLeftGroupbox("Whitelist")
 local WhitelistDropdown = TeamBox:AddDropdown("WhitelistPlayers", {
 	Values = GetPlayerNames(),
-	Default = 0,
 	Multi = true,
 	Text = "Whitelisted Players"
 })
 WhitelistDropdown:OnChanged(function(selected)
-    WhitelistedNames = selected -- Зберігає таблицю гравців, яких вибрано
+    WhitelistedNames = selected
 end)
 
--- Оновлення Dropdowns при заході/виході гравців
 Players.PlayerAdded:Connect(function() 
     SpectateDropdown:SetValues(GetPlayerNames()) 
     WhitelistDropdown:SetValues(GetPlayerNames())
@@ -337,28 +319,7 @@ SaveManager:BuildConfigSection(Tabs.UISettings)
 ThemeManager:ApplyToTab(Tabs.UISettings)
 SaveManager:LoadAutoloadConfig()
 
--- ===================== ЛОГІКА СКРИПТА (ІЗ ВАШОГО КОДУ) =====================
-local function onChatted(player, msg)
-	if msg == "/e v2_3_ping" then
-		Scripters[player.UserId] = true
-		updateScriptersLabel()
-	end
-end
-
-for _, p in pairs(Players:GetPlayers()) do p.Chatted:Connect(function(msg) onChatted(p, msg) end) end
-Players.PlayerAdded:Connect(function(p) p.Chatted:Connect(function(msg) onChatted(p, msg) end) end)
-Players.PlayerRemoving:Connect(function(p) Scripters[p.UserId] = nil; updateScriptersLabel() end)
-
-task.spawn(function()
-	pcall(function()
-		if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
-			TextChatService.TextChannels.RBXGeneral:SendAsync("/e v2_3_ping")
-		else
-			ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer("/e v2_3_ping", "All")
-		end
-	end)
-end)
-
+-- ===================== ЛОГІКА СКРИПТА =====================
 local function getTargetPart(char)
 	return AimbotTarget == "Head" and char:FindFirstChild("Head") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or char:FindFirstChild("HumanoidRootPart")
 end
