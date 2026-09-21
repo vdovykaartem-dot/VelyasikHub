@@ -65,10 +65,11 @@ local WhitelistedNames, OriginalSizes, OriginalNoclipStates = {}, {}, {}
 -- Кеш для продуктивності та анімацій
 local PerfSettings = { Textures = false, Particles = false, Animations = false }
 local cacheMaterials, cacheDecals, cacheParticles = {}, {}, {}
+
 local CustomAnims = {
-    Run = { ID = "", Active = false, Path = {"run", "RunAnim"} },
-    Jump = { ID = "", Active = false, Path = {"jump", "JumpAnim"} },
-    Idle = { ID = "", Active = false, Path = {"idle", "Animation1"} }
+    Run = { ID = "", Active = false },
+    Jump = { ID = "", Active = false },
+    Idle = { ID = "", Active = false }
 }
 local OriginalAnims = {}
 
@@ -214,17 +215,82 @@ PerfBox:AddToggle("DisableAnimations", { Text = "Disable Animations", Default = 
     end
 end)
 
+-- ДОПОМІЖНА ФУНКЦІЯ ДЛЯ КАСТОМНИХ АНІМАЦІЙ
+function updateLocalAnim()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local animate = char:FindFirstChild("Animate")
+    if not animate or not animate:IsA("LocalScript") then return end
+
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local animator = hum and hum:FindFirstChildOfClass("Animator")
+
+    local function applyToNode(folderName, animName, cfg)
+        local folder = animate:FindFirstChild(folderName)
+        if folder then
+            for _, animObj in pairs(folder:GetChildren()) do
+                if animObj:IsA("Animation") and (animObj.Name == animName or animName == "ALL") then
+                    local cacheKey = folderName .. "_" .. animObj.Name
+                    if not OriginalAnims[cacheKey] then OriginalAnims[cacheKey] = animObj.AnimationId end
+
+                    if cfg.Active and cfg.ID and cfg.ID ~= "" then
+                        -- Отримуємо лише цифри, якщо користувач ввів посилання
+                        local idNum = string.match(cfg.ID, "%d+")
+                        if idNum then
+                            animObj.AnimationId = "rbxassetid://" .. idNum
+                        end
+                    else
+                        if OriginalAnims[cacheKey] then
+                            animObj.AnimationId = OriginalAnims[cacheKey]
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    -- Застосовуємо нові ID
+    applyToNode("run", "RunAnim", CustomAnims.Run)
+    applyToNode("walk", "WalkAnim", CustomAnims.Run) -- Змінюємо і Walk, щоб уникнути глітчів
+    applyToNode("jump", "JumpAnim", CustomAnims.Jump)
+    applyToNode("idle", "ALL", CustomAnims.Idle)
+
+    -- Зупиняємо всі поточні стандартні анімації, щоб нова могла відтворитися
+    if animator then
+        for _, track in pairs(animator:GetPlayingAnimationTracks()) do
+            -- Зупиняємо лише ті треки, що належать стандартному скрипту Animate
+            if track.Animation and track.Animation.Parent and track.Animation.Parent.Parent == animate then
+                track:Stop(0)
+            end
+        end
+    end
+
+    -- Примусово перезавантажуємо стандартний скрипт Animate
+    animate.Disabled = true
+    task.wait(0.05)
+    animate.Disabled = false
+end
+
 -- ANIMATIONS SUB-TAB
 local AnimBox = Tabs.Visuals:AddLeftGroupbox("Animations")
 
-AnimBox:AddInput("RunAnimID", { Default = "", Numeric = true, Finished = false, Text = "Run Animation ID", Tooltip = "Введіть ID для кастомної анімації бігу" }):OnChanged(function(v) CustomAnims.Run.ID = v end)
-AnimBox:AddToggle("PlayRunAnim", { Text = "Play Run Animation", Default = false, Tooltip = "Вмикає або вимикає кастомну анімацію бігу" }):OnChanged(function(v) CustomAnims.Run.Active = v; updateLocalAnim("Run") end)
+AnimBox:AddInput("RunAnimID", { Default = "", Numeric = false, Finished = false, Text = "Run Animation ID", Tooltip = "Введіть ID або посилання для кастомної анімації бігу" }):OnChanged(function(v) CustomAnims.Run.ID = v end)
+AnimBox:AddToggle("PlayRunAnim", { Text = "Play Run Animation", Default = false, Tooltip = "Вмикає або вимикає кастомну анімацію бігу" }):OnChanged(function(v) CustomAnims.Run.Active = v; updateLocalAnim() end)
 
-AnimBox:AddInput("JumpAnimID", { Default = "", Numeric = true, Finished = false, Text = "Jump Animation ID", Tooltip = "Введіть ID для кастомної анімації стрибка" }):OnChanged(function(v) CustomAnims.Jump.ID = v end)
-AnimBox:AddToggle("PlayJumpAnim", { Text = "Play Jump Animation", Default = false, Tooltip = "Вмикає або вимикає кастомну анімацію стрибка" }):OnChanged(function(v) CustomAnims.Jump.Active = v; updateLocalAnim("Jump") end)
+AnimBox:AddInput("JumpAnimID", { Default = "", Numeric = false, Finished = false, Text = "Jump Animation ID", Tooltip = "Введіть ID або посилання для кастомної анімації стрибка" }):OnChanged(function(v) CustomAnims.Jump.ID = v end)
+AnimBox:AddToggle("PlayJumpAnim", { Text = "Play Jump Animation", Default = false, Tooltip = "Вмикає або вимикає кастомну анімацію стрибка" }):OnChanged(function(v) CustomAnims.Jump.Active = v; updateLocalAnim() end)
 
-AnimBox:AddInput("IdleAnimID", { Default = "", Numeric = true, Finished = false, Text = "Idle Animation ID", Tooltip = "Введіть ID для кастомної анімації стояння (Idle)" }):OnChanged(function(v) CustomAnims.Idle.ID = v end)
-AnimBox:AddToggle("PlayIdleAnim", { Text = "Play Idle Animation", Default = false, Tooltip = "Вмикає або вимикає кастомну анімацію стояння" }):OnChanged(function(v) CustomAnims.Idle.Active = v; updateLocalAnim("Idle") end)
+AnimBox:AddInput("IdleAnimID", { Default = "", Numeric = false, Finished = false, Text = "Idle Animation ID", Tooltip = "Введіть ID або посилання для кастомної анімації стояння (Idle)" }):OnChanged(function(v) CustomAnims.Idle.ID = v end)
+AnimBox:AddToggle("PlayIdleAnim", { Text = "Play Idle Animation", Default = false, Tooltip = "Вмикає або вимикає кастомну анімацію стояння" }):OnChanged(function(v) CustomAnims.Idle.Active = v; updateLocalAnim() end)
+
+-- Перевіряємо та оновлюємо анімації щоразу, коли персонаж респавниться
+LocalPlayer.CharacterAdded:Connect(function(char)
+    task.spawn(function()
+        char:WaitForChild("Animate", 5)
+        task.wait(0.5) -- Чекаємо поки Animate завантажиться
+        updateLocalAnim()
+    end)
+end)
 
 local SpecBox = Tabs.Visuals:AddRightGroupbox("Spectate")
 SpecBox:AddToggle("SpectateToggle", { Text = "Enable Spectate", Default = false, Tooltip = "Вмикає спостереження за іншим гравцем" }):OnChanged(function(v)
@@ -247,7 +313,6 @@ MiscBox:AddToggle("CamUnlock", { Text = "Camera Unlocker", Default = false, Tool
     CamUnlockerEnabled = v; LocalPlayer.CameraMaxZoomDistance = v and 100000 or 128 
 end)
 
--- Double Click Buttons
 MiscBox:AddButton({
     Text = "Serverhop",
     DoubleClick = true,
@@ -366,7 +431,7 @@ ThemeManager:SetFolder('ChronoHub'); SaveManager:SetFolder('ChronoHub/Configs')
 SaveManager:BuildConfigSection(Tabs.UISettings); ThemeManager:ApplyToTab(Tabs.UISettings)
 SaveManager:LoadAutoloadConfig()
 
--- ===================== ДОПОМІЖНІ ФУНКЦІЇ =====================
+-- ===================== ДОПОМІЖНІ ФУНКЦІЇ ПРОДУКТИВНОСТІ =====================
 function handleTexture(v, disable)
     if disable then
         if v:IsA("BasePart") and not cacheMaterials[v] then
@@ -393,34 +458,6 @@ end
 workspace.DescendantAdded:Connect(function(v)
     if PerfSettings.Textures then handleTexture(v, true) end
     if PerfSettings.Particles then handleParticle(v, true) end
-end)
-
-function updateLocalAnim(animType)
-    local char = LocalPlayer.Character
-    if not char then return end
-    local animate = char:FindFirstChild("Animate")
-    if not animate then return end
-    
-    local cfg = CustomAnims[animType]
-    if cfg then
-        local folder = animate:FindFirstChild(cfg.Path[1])
-        local animObj = folder and folder:FindFirstChild(cfg.Path[2])
-        if animObj then
-            if not OriginalAnims[animType] then OriginalAnims[animType] = animObj.AnimationId end
-            if cfg.Active and cfg.ID ~= "" then
-                animObj.AnimationId = "rbxassetid://" .. cfg.ID
-            else
-                if OriginalAnims[animType] then animObj.AnimationId = OriginalAnims[animType] end
-            end
-        end
-    end
-end
-
-LocalPlayer.CharacterAdded:Connect(function(char)
-    task.wait(1)
-    updateLocalAnim("Run")
-    updateLocalAnim("Jump")
-    updateLocalAnim("Idle")
 end)
 
 local function getTargetPart(char) return AimbotTarget == "Head" and char:FindFirstChild("Head") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or char:FindFirstChild("HumanoidRootPart") end
