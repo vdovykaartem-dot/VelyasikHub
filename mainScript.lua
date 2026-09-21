@@ -57,6 +57,7 @@ local AimbotEnabled, AimbotTarget, WallCheckEnabled, FOVEnabled, FOVRadius, Smoo
 local NoFogEnabled, FullbrightEnabled, FOVChangerEnabled, CustomFOV = false, false, false, 90
 local NoCamShakeEnabled, NoCamBobbingEnabled = false, false
 local EnableJumpToggle = false
+local ShiftlockEnabled, DisableCollisionEnabled = false, false
 local FPSUnlockerEnabled, CamUnlockerEnabled = true, false
 local FreeCamEnabled, FreezeDuringEnabled, FC_Speed, fwdDown, bwdDown = false, false, 60, false, false
 local SpectateEnabled, SpectateTargetPlayer = false, nil
@@ -169,42 +170,50 @@ local PingLabel = StatsBox:AddLabel("Ping: Calculating...")
 
 -- ===================== ВКЛАДКА: MAIN =====================
 local ESPBox = Tabs.Main:AddLeftGroupbox("ESP Settings")
-local ESPMasterTog = ESPBox:AddToggle("ESPMaster", { Text = "Enable ESP", Default = false, Tooltip = "Вмикає або вимикає головну систему ESP" })
+local ESPMasterTog = ESPBox:AddToggle("ESPMaster", { Text = "Enable ESP", Default = false, Tooltip = "Enables main ESP system" })
 ESPMasterTog:OnChanged(function(v) ESPSettings.Master = v end)
-ESPMasterTog:AddColorPicker("ESPColor", { Default = Color3.fromRGB(255, 50, 50), Title = "ESP Color", Tooltip = "Колір для всіх елементів ESP" })
+ESPMasterTog:AddColorPicker("ESPColor", { Default = Color3.fromRGB(255, 50, 50), Title = "ESP Color", Tooltip = "Color for all ESP elements" })
 Library.Options.ESPColor:OnChanged(function() ESPColor = Library.Options.ESPColor.Value end)
-ESPBox:AddToggle("ESPHighlight", { Text = "ESP Highlight", Default = true, Tooltip = "Підсвічує модель гравця крізь стіни" }):OnChanged(function(v) ESPSettings.Highlight = v end)
-ESPBox:AddToggle("ESPBox", { Text = "ESP Box", Default = false, Tooltip = "Малює квадрат навколо гравця" }):OnChanged(function(v) ESPSettings.Box = v end)
-ESPBox:AddToggle("ESPName", { Text = "ESP Name", Default = false, Tooltip = "Показує ім'я гравця" }):OnChanged(function(v) ESPSettings.Name = v end)
-ESPBox:AddToggle("ESPHP", { Text = "ESP Health", Default = false, Tooltip = "Показує смугу здоров'я гравця" }):OnChanged(function(v) ESPSettings.HP = v end)
-ESPBox:AddToggle("ESPStuds", { Text = "ESP Distance (Studs)", Default = false, Tooltip = "Показує відстань до гравця" }):OnChanged(function(v) ESPSettings.Studs = v end)
+ESPBox:AddToggle("ESPHighlight", { Text = "ESP Highlight", Default = true, Tooltip = "Highlights players through walls" }):OnChanged(function(v) ESPSettings.Highlight = v end)
+ESPBox:AddToggle("ESPBox", { Text = "ESP Box", Default = false, Tooltip = "Draws a box around players" }):OnChanged(function(v) ESPSettings.Box = v end)
+ESPBox:AddToggle("ESPName", { Text = "ESP Name", Default = false, Tooltip = "Shows player names" }):OnChanged(function(v) ESPSettings.Name = v end)
+ESPBox:AddToggle("ESPHP", { Text = "ESP Health", Default = false, Tooltip = "Shows player health bars" }):OnChanged(function(v) ESPSettings.HP = v end)
+ESPBox:AddToggle("ESPStuds", { Text = "ESP Distance (Studs)", Default = false, Tooltip = "Shows distance to players" }):OnChanged(function(v) ESPSettings.Studs = v end)
 
 local MainControlsBox = Tabs.Main:AddRightGroupbox("Controls & Hitbox")
-MainControlsBox:AddToggle("EnableJump", { Text = "Enable Jump", Default = false, Tooltip = "Розблоковує стрибок і показує кастомну кнопку JumpButton (якщо знайдено)" }):OnChanged(function(v) EnableJumpToggle = v end)
-MainControlsBox:AddToggle("Hitbox", { Text = "Enable Hitbox", Default = false, Tooltip = "Збільшує розмір моделі гравців для легшого влучання" }):OnChanged(function(v) HitboxEnabled = v end)
-MainControlsBox:AddSlider("HitboxSize", { Text = "Hitbox Size", Default = 10, Min = 1, Max = 30, Rounding = 0, Tooltip = "Розмір збільшеного хітбоксу" }):OnChanged(function(v) HitboxSize = v end)
-MainControlsBox:AddToggle("KickSec", { Text = "Kick Security", Default = true, Tooltip = "Анти-кік захист для певних ігор" }):OnChanged(function(v) KickStuffEnabled = v end)
+MainControlsBox:AddToggle("EnableJump", { Text = "Enable Jump", Default = false, Tooltip = "Enables jump and mobile jump button" }):OnChanged(function(v) EnableJumpToggle = v end)
+MainControlsBox:AddToggle("Hitbox", { Text = "Enable Hitbox", Default = false, Tooltip = "Expands player hitboxes" }):OnChanged(function(v) HitboxEnabled = v end)
+MainControlsBox:AddSlider("HitboxSize", { Text = "Hitbox Size", Default = 10, Min = 1, Max = 30, Rounding = 0, Tooltip = "Size of expanded hitboxes" }):OnChanged(function(v) HitboxSize = v end)
+MainControlsBox:AddToggle("KickSec", { Text = "Kick Security", Default = true, Tooltip = "Anti-kick protection" }):OnChanged(function(v) KickStuffEnabled = v end)
+MainControlsBox:AddToggle("Shiftlock", { Text = "Shiftlock", Default = false, Tooltip = "Locks camera and character rotation" }):OnChanged(function(v)
+    ShiftlockEnabled = v
+    if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        LocalPlayer.Character.Humanoid.AutoRotate = true
+        UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+    end
+end)
+MainControlsBox:AddToggle("DisableCollision", { Text = "Disable Collision", Default = false, Tooltip = "Disables collisions with other players" }):OnChanged(function(v) DisableCollisionEnabled = v end)
 
 -- ===================== ВКЛАДКА: VISUALS =====================
 local EnvBox = Tabs.Visuals:AddLeftGroupbox("Environment & Camera")
-EnvBox:AddToggle("NoFog", { Text = "No Fog", Default = false, Tooltip = "Прибирає туман у грі" }):OnChanged(function(v) NoFogEnabled = v end)
-EnvBox:AddToggle("Fullbright", { Text = "Fullbright", Default = false, Tooltip = "Робить гру максимально світлою" }):OnChanged(function(v) FullbrightEnabled = v end)
-EnvBox:AddToggle("NoCamShake", { Text = "No Camera Shake", Default = false, Tooltip = "Вимикає трясіння камери (Camera Shake)" }):OnChanged(function(v) NoCamShakeEnabled = v end)
-EnvBox:AddToggle("NoCamBobbing", { Text = "No Camera Bobbing", Default = false, Tooltip = "Вимикає покачування камери під час ходьби" }):OnChanged(function(v) NoCamBobbingEnabled = v end)
-EnvBox:AddToggle("FOVChanger", { Text = "FOV Changer", Default = false, Tooltip = "Вмикає кастомне поле зору" }):OnChanged(function(v) FOVChangerEnabled = v; if not v then Camera.FieldOfView = 70 end end)
-EnvBox:AddSlider("CustomFOV", { Text = "Custom FOV", Default = 90, Min = 10, Max = 120, Rounding = 0, Tooltip = "Значення поля зору" }):OnChanged(function(v) CustomFOV = v end)
+EnvBox:AddToggle("NoFog", { Text = "No Fog", Default = false, Tooltip = "Removes environment fog" }):OnChanged(function(v) NoFogEnabled = v end)
+EnvBox:AddToggle("Fullbright", { Text = "Fullbright", Default = false, Tooltip = "Maxes out environment lighting" }):OnChanged(function(v) FullbrightEnabled = v end)
+EnvBox:AddToggle("NoCamShake", { Text = "No Camera Shake", Default = false, Tooltip = "Disables camera shake" }):OnChanged(function(v) NoCamShakeEnabled = v end)
+EnvBox:AddToggle("NoCamBobbing", { Text = "No Camera Bobbing", Default = false, Tooltip = "Disables camera bobbing" }):OnChanged(function(v) NoCamBobbingEnabled = v end)
+EnvBox:AddToggle("FOVChanger", { Text = "FOV Changer", Default = false, Tooltip = "Enables custom field of view" }):OnChanged(function(v) FOVChangerEnabled = v; if not v then Camera.FieldOfView = 70 end end)
+EnvBox:AddSlider("CustomFOV", { Text = "Custom FOV", Default = 90, Min = 10, Max = 120, Rounding = 0, Tooltip = "Field of view value" }):OnChanged(function(v) CustomFOV = v end)
 
 -- PERFORMANCE SUB-TAB
 local PerfBox = Tabs.Visuals:AddLeftGroupbox("Performance")
-PerfBox:AddToggle("DisableTextures", { Text = "Disable Textures", Default = false, Tooltip = "Вимикає текстури та матеріали для підвищення FPS (змінює на SmoothPlastic)" }):OnChanged(function(v)
+PerfBox:AddToggle("DisableTextures", { Text = "Disable Textures", Default = false, Tooltip = "Disables textures and materials" }):OnChanged(function(v)
     PerfSettings.Textures = v
     for _, obj in pairs(workspace:GetDescendants()) do handleTexture(obj, v) end
 end)
-PerfBox:AddToggle("DisableParticles", { Text = "Disable Particles", Default = false, Tooltip = "Вимикає частинки, сліди та дим для підвищення FPS" }):OnChanged(function(v)
+PerfBox:AddToggle("DisableParticles", { Text = "Disable Particles", Default = false, Tooltip = "Disables particles and trails" }):OnChanged(function(v)
     PerfSettings.Particles = v
     for _, obj in pairs(workspace:GetDescendants()) do handleParticle(obj, v) end
 end)
-PerfBox:AddToggle("DisableAnimations", { Text = "Disable Animations", Default = false, Tooltip = "Зупиняє всі ігрові анімації для максимального бусту FPS" }):OnChanged(function(v)
+PerfBox:AddToggle("DisableAnimations", { Text = "Disable Animations", Default = false, Tooltip = "Stops all game animations" }):OnChanged(function(v)
     PerfSettings.Animations = v
     if not v then return end
     for _, p in pairs(Players:GetPlayers()) do
@@ -234,7 +243,6 @@ function updateLocalAnim()
                     if not OriginalAnims[cacheKey] then OriginalAnims[cacheKey] = animObj.AnimationId end
 
                     if cfg.Active and cfg.ID and cfg.ID ~= "" then
-                        -- Отримуємо лише цифри, якщо користувач ввів посилання
                         local idNum = string.match(cfg.ID, "%d+")
                         if idNum then
                             animObj.AnimationId = "rbxassetid://" .. idNum
@@ -249,23 +257,19 @@ function updateLocalAnim()
         end
     end
 
-    -- Застосовуємо нові ID
     applyToNode("run", "RunAnim", CustomAnims.Run)
-    applyToNode("walk", "WalkAnim", CustomAnims.Run) -- Змінюємо і Walk, щоб уникнути глітчів
+    applyToNode("walk", "WalkAnim", CustomAnims.Run)
     applyToNode("jump", "JumpAnim", CustomAnims.Jump)
     applyToNode("idle", "ALL", CustomAnims.Idle)
 
-    -- Зупиняємо всі поточні стандартні анімації, щоб нова могла відтворитися
     if animator then
         for _, track in pairs(animator:GetPlayingAnimationTracks()) do
-            -- Зупиняємо лише ті треки, що належать стандартному скрипту Animate
             if track.Animation and track.Animation.Parent and track.Animation.Parent.Parent == animate then
                 track:Stop(0)
             end
         end
     end
 
-    -- Примусово перезавантажуємо стандартний скрипт Animate
     animate.Disabled = true
     task.wait(0.05)
     animate.Disabled = false
@@ -274,49 +278,48 @@ end
 -- ANIMATIONS SUB-TAB
 local AnimBox = Tabs.Visuals:AddLeftGroupbox("Animations")
 
-AnimBox:AddInput("RunAnimID", { Default = "", Numeric = false, Finished = false, Text = "Run Animation ID", Tooltip = "Введіть ID або посилання для кастомної анімації бігу" }):OnChanged(function(v) CustomAnims.Run.ID = v end)
-AnimBox:AddToggle("PlayRunAnim", { Text = "Play Run Animation", Default = false, Tooltip = "Вмикає або вимикає кастомну анімацію бігу" }):OnChanged(function(v) CustomAnims.Run.Active = v; updateLocalAnim() end)
+AnimBox:AddInput("RunAnimID", { Default = "", Numeric = false, Finished = false, Text = "Run Animation ID", Tooltip = "ID or link for custom run animation" }):OnChanged(function(v) CustomAnims.Run.ID = v end)
+AnimBox:AddToggle("PlayRunAnim", { Text = "Play Run Animation", Default = false, Tooltip = "Enables custom run animation" }):OnChanged(function(v) CustomAnims.Run.Active = v; updateLocalAnim() end)
 
-AnimBox:AddInput("JumpAnimID", { Default = "", Numeric = false, Finished = false, Text = "Jump Animation ID", Tooltip = "Введіть ID або посилання для кастомної анімації стрибка" }):OnChanged(function(v) CustomAnims.Jump.ID = v end)
-AnimBox:AddToggle("PlayJumpAnim", { Text = "Play Jump Animation", Default = false, Tooltip = "Вмикає або вимикає кастомну анімацію стрибка" }):OnChanged(function(v) CustomAnims.Jump.Active = v; updateLocalAnim() end)
+AnimBox:AddInput("JumpAnimID", { Default = "", Numeric = false, Finished = false, Text = "Jump Animation ID", Tooltip = "ID or link for custom jump animation" }):OnChanged(function(v) CustomAnims.Jump.ID = v end)
+AnimBox:AddToggle("PlayJumpAnim", { Text = "Play Jump Animation", Default = false, Tooltip = "Enables custom jump animation" }):OnChanged(function(v) CustomAnims.Jump.Active = v; updateLocalAnim() end)
 
-AnimBox:AddInput("IdleAnimID", { Default = "", Numeric = false, Finished = false, Text = "Idle Animation ID", Tooltip = "Введіть ID або посилання для кастомної анімації стояння (Idle)" }):OnChanged(function(v) CustomAnims.Idle.ID = v end)
-AnimBox:AddToggle("PlayIdleAnim", { Text = "Play Idle Animation", Default = false, Tooltip = "Вмикає або вимикає кастомну анімацію стояння" }):OnChanged(function(v) CustomAnims.Idle.Active = v; updateLocalAnim() end)
+AnimBox:AddInput("IdleAnimID", { Default = "", Numeric = false, Finished = false, Text = "Idle Animation ID", Tooltip = "ID or link for custom idle animation" }):OnChanged(function(v) CustomAnims.Idle.ID = v end)
+AnimBox:AddToggle("PlayIdleAnim", { Text = "Play Idle Animation", Default = false, Tooltip = "Enables custom idle animation" }):OnChanged(function(v) CustomAnims.Idle.Active = v; updateLocalAnim() end)
 
--- Перевіряємо та оновлюємо анімації щоразу, коли персонаж респавниться
 LocalPlayer.CharacterAdded:Connect(function(char)
     task.spawn(function()
         char:WaitForChild("Animate", 5)
-        task.wait(0.5) -- Чекаємо поки Animate завантажиться
+        task.wait(0.5)
         updateLocalAnim()
     end)
 end)
 
 local SpecBox = Tabs.Visuals:AddRightGroupbox("Spectate")
-SpecBox:AddToggle("SpectateToggle", { Text = "Enable Spectate", Default = false, Tooltip = "Вмикає спостереження за іншим гравцем" }):OnChanged(function(v)
+SpecBox:AddToggle("SpectateToggle", { Text = "Enable Spectate", Default = false, Tooltip = "Spectates selected player" }):OnChanged(function(v)
 	SpectateEnabled = v
 	if not v then
 		SpectateTargetPlayer = nil
 		if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then Camera.CameraSubject = LocalPlayer.Character.Humanoid end
 	end
 end)
-local SpectateDropdown = SpecBox:AddDropdown("SpectateTarget", { Values = GetPlayerNames(), Default = 1, Multi = false, Text = "Target Player", Tooltip = "Оберіть гравця для спостереження" })
+local SpectateDropdown = SpecBox:AddDropdown("SpectateTarget", { Values = GetPlayerNames(), Default = 1, Multi = false, Text = "Target Player", Tooltip = "Player to spectate" })
 SpectateDropdown:OnChanged(function(v)
     if v and v ~= "None" then SpectateTargetPlayer = Players:FindFirstChild(v) else SpectateTargetPlayer = nil end
 end)
 
 local MiscBox = Tabs.Visuals:AddRightGroupbox("Misc Settings")
-MiscBox:AddToggle("FPSUnlock", { Text = "FPS Unlocker", Default = true, Tooltip = "Знімає ліміт FPS" }):OnChanged(function(v) 
+MiscBox:AddToggle("FPSUnlock", { Text = "FPS Unlocker", Default = true, Tooltip = "Unlocks frame rate" }):OnChanged(function(v) 
     FPSUnlockerEnabled = v; if setfpscap then pcall(function() setfpscap(v and 9999 or 60) end) end 
 end)
-MiscBox:AddToggle("CamUnlock", { Text = "Camera Unlocker", Default = false, Tooltip = "Дозволяє віддаляти камеру нескінченно" }):OnChanged(function(v) 
+MiscBox:AddToggle("CamUnlock", { Text = "Camera Unlocker", Default = false, Tooltip = "Unlocks maximum camera zoom" }):OnChanged(function(v) 
     CamUnlockerEnabled = v; LocalPlayer.CameraMaxZoomDistance = v and 100000 or 128 
 end)
 
 MiscBox:AddButton({
     Text = "Serverhop",
     DoubleClick = true,
-    Tooltip = "Натисніть двічі, щоб перейти на інший сервер",
+    Tooltip = "Double click to join a different server",
     Func = function()
         local servers = {}
         local req = (syn and syn.request) or request or http_request or (fluxus and fluxus.request)
@@ -339,7 +342,7 @@ MiscBox:AddButton({
 MiscBox:AddButton({
     Text = "Rejoin Server",
     DoubleClick = true,
-    Tooltip = "Натисніть двічі, щоб перепідключитися до цього ж сервера",
+    Tooltip = "Double click to rejoin current server",
     Func = function()
         TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer) 
     end
@@ -347,13 +350,13 @@ MiscBox:AddButton({
 
 -- ===================== ВКЛАДКА: PLAYER =====================
 local MoveBox = Tabs.Player:AddLeftGroupbox("Movement")
-MoveBox:AddToggle("WalkSpeedTog", { Text = "Custom WalkSpeed", Default = false, Tooltip = "Вмикає зміну швидкості бігу" }):OnChanged(function(v)
+MoveBox:AddToggle("WalkSpeedTog", { Text = "Custom WalkSpeed", Default = false, Tooltip = "Enables custom walk speed" }):OnChanged(function(v)
 	SpeedEnabled = v 
 	if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = 16 end
 end)
-MoveBox:AddSlider("WalkSpeedVal", { Text = "WalkSpeed Value", Default = 16, Min = 1, Max = 100, Rounding = 0, Tooltip = "Значення швидкості" }):OnChanged(function(v) TargetSpeed = v end)
+MoveBox:AddSlider("WalkSpeedVal", { Text = "WalkSpeed Value", Default = 16, Min = 1, Max = 100, Rounding = 0, Tooltip = "Walk speed value" }):OnChanged(function(v) TargetSpeed = v end)
 
-MoveBox:AddToggle("Noclip", { Text = "Noclip", Default = false, Tooltip = "Дозволяє проходити крізь стіни" }):OnChanged(function(v)
+MoveBox:AddToggle("Noclip", { Text = "Noclip", Default = false, Tooltip = "Allows walking through walls" }):OnChanged(function(v)
 	NoclipEnabled = v 
 	if v and LocalPlayer.Character then
 		for _, part in pairs(LocalPlayer.Character:GetDescendants()) do if part:IsA("BasePart") then OriginalNoclipStates[part] = part.CanCollide end end
@@ -364,25 +367,25 @@ MoveBox:AddToggle("Noclip", { Text = "Noclip", Default = false, Tooltip = "До�
 		table.clear(OriginalNoclipStates)
 	end
 end)
-MoveBox:AddToggle("InfJump", { Text = "Infinite Jump", Default = false, Tooltip = "Дозволяє стрибати у повітрі" }):OnChanged(function(v) InfJumpEnabled = v end)
+MoveBox:AddToggle("InfJump", { Text = "Infinite Jump", Default = false, Tooltip = "Allows jumping in mid-air" }):OnChanged(function(v) InfJumpEnabled = v end)
 
 local FlyBox = Tabs.Player:AddRightGroupbox("Fly Settings")
-FlyBox:AddToggle("FlyTog", { Text = "Fly", Default = false, Tooltip = "Вмикає політ" }):OnChanged(function(v) FlyEnabled = v end)
-FlyBox:AddSlider("FlySpeed", { Text = "Fly Speed", Default = 50, Min = 1, Max = 200, Rounding = 0, Tooltip = "Швидкість польоту" }):OnChanged(function(v) FlySpeed = v end)
+FlyBox:AddToggle("FlyTog", { Text = "Fly", Default = false, Tooltip = "Enables flying" }):OnChanged(function(v) FlyEnabled = v end)
+FlyBox:AddSlider("FlySpeed", { Text = "Fly Speed", Default = 50, Min = 1, Max = 200, Rounding = 0, Tooltip = "Fly speed value" }):OnChanged(function(v) FlySpeed = v end)
 
 -- ===================== ВКЛАДКА: COMBAT =====================
 local AimbotBox = Tabs.Combat:AddLeftGroupbox("Aimbot")
-AimbotBox:AddToggle("Aimbot", { Text = "Enable Aimbot", Default = false, Tooltip = "Автоматично наводить камеру на ворога" }):OnChanged(function(v) AimbotEnabled = v end)
-AimbotBox:AddDropdown("AimTarget", { Values = {"Head", "Torso"}, Default = 1, Multi = false, Text = "Target Part", Tooltip = "Частина тіла для націлювання" }):OnChanged(function(v) AimbotTarget = v end)
-AimbotBox:AddToggle("WallCheck", { Text = "Wall Check", Default = true, Tooltip = "Перевіряє чи є стіна між вами та ворогом" }):OnChanged(function(v) WallCheckEnabled = v end)
-AimbotBox:AddSlider("AimSmooth", { Text = "Aimbot Smoothness", Default = 0, Min = 0, Max = 100, Rounding = 0, Tooltip = "Плавність наведення Aimbot" }):OnChanged(function(v) Smoothness = v end)
+AimbotBox:AddToggle("Aimbot", { Text = "Enable Aimbot", Default = false, Tooltip = "Automatically aims at targets" }):OnChanged(function(v) AimbotEnabled = v end)
+AimbotBox:AddDropdown("AimTarget", { Values = {"Head", "Torso"}, Default = 1, Multi = false, Text = "Target Part", Tooltip = "Target body part" }):OnChanged(function(v) AimbotTarget = v end)
+AimbotBox:AddToggle("WallCheck", { Text = "Wall Check", Default = true, Tooltip = "Checks for walls between target" }):OnChanged(function(v) WallCheckEnabled = v end)
+AimbotBox:AddSlider("AimSmooth", { Text = "Aimbot Smoothness", Default = 0, Min = 0, Max = 100, Rounding = 0, Tooltip = "Aimbot smoothing level" }):OnChanged(function(v) Smoothness = v end)
 
 local FOVBox = Tabs.Combat:AddRightGroupbox("FOV")
-FOVBox:AddToggle("FOVCircle", { Text = "Show FOV Circle", Default = false, Tooltip = "Показує радіус дії Aimbot" }):OnChanged(function(v) FOVEnabled = v; FOVCircleUI.Visible = v end)
-FOVBox:AddToggle("RainbowFOV", { Text = "Rainbow FOV", Default = false, Tooltip = "Робить коло FOV переливчастим" }):OnChanged(function(v)
+FOVBox:AddToggle("FOVCircle", { Text = "Show FOV Circle", Default = false, Tooltip = "Shows aimbot radius" }):OnChanged(function(v) FOVEnabled = v; FOVCircleUI.Visible = v end)
+FOVBox:AddToggle("RainbowFOV", { Text = "Rainbow FOV", Default = false, Tooltip = "Rainbow effect for FOV circle" }):OnChanged(function(v)
 	RainbowFOVEnabled = v; if not v and UIStroke then UIStroke.Color = Color3.fromRGB(255, 255, 255) end
 end)
-FOVBox:AddSlider("FOVCircleSize", { Text = "FOV Size", Default = 180, Min = 20, Max = 400, Rounding = 0, Tooltip = "Розмір радіуса Aimbot" }):OnChanged(function(v)
+FOVBox:AddSlider("FOVCircleSize", { Text = "FOV Size", Default = 180, Min = 20, Max = 400, Rounding = 0, Tooltip = "Aimbot radius size" }):OnChanged(function(v)
 	FOVRadius = v
 	if FOVCircleUI then
 		FOVCircleUI.Size = UDim2.new(0, FOVRadius * 2, 0, FOVRadius * 2)
@@ -393,7 +396,7 @@ end)
 -- ===================== ВКЛАДКА: TEAM CHECK =====================
 local TeamBox = Tabs.TeamCheck:AddLeftGroupbox("Whitelist")
 local WhitelistDropdown = TeamBox:AddDropdown("WhitelistPlayers", {
-	Values = GetPlayerNames(), Multi = true, Text = "Whitelisted Players", Tooltip = "Гравці, яких не буде цілити Aimbot"
+	Values = GetPlayerNames(), Multi = true, Text = "Whitelisted Players", Tooltip = "Players ignored by aimbot"
 })
 WhitelistDropdown:OnChanged(function(selected) WhitelistedNames = selected end)
 
@@ -402,7 +405,7 @@ Players.PlayerRemoving:Connect(function() SpectateDropdown:SetValues(GetPlayerNa
 
 -- ===================== ВКЛАДКА: FREE CAM =====================
 local FCBox = Tabs.FreeCam:AddLeftGroupbox("Camera Controls")
-FCBox:AddToggle("FCToggle", { Text = "Enable Free Camera", Default = false, Tooltip = "Вільна камера для польоту по карті" }):OnChanged(function(s)
+FCBox:AddToggle("FCToggle", { Text = "Enable Free Camera", Default = false, Tooltip = "Enables free camera" }):OnChanged(function(s)
 	FreeCamEnabled = s 
 	if s then
 		local FCPart = workspace:FindFirstChild(ObfuscatedNames.FCPart) or Instance.new("Part")
@@ -418,11 +421,11 @@ FCBox:AddToggle("FCToggle", { Text = "Enable Free Camera", Default = false, Tool
 		if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then LocalPlayer.Character.HumanoidRootPart.Anchored = false end
 	end
 end)
-FCBox:AddToggle("FCFreeze", { Text = "Freeze Character During Freecam", Default = false, Tooltip = "Заморожує вашого персонажа, поки включена Free Cam" }):OnChanged(function(s)
+FCBox:AddToggle("FCFreeze", { Text = "Freeze Character During Freecam", Default = false, Tooltip = "Freezes character while using freecam" }):OnChanged(function(s)
 	FreezeDuringEnabled = s
 	if not s and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then LocalPlayer.Character.HumanoidRootPart.Anchored = false end
 end)
-FCBox:AddSlider("FCSpeed", { Text = "Free Cam Speed", Default = 60, Min = 10, Max = 300, Rounding = 0, Tooltip = "Швидкість польоту камери" }):OnChanged(function(v) FC_Speed = v end)
+FCBox:AddSlider("FCSpeed", { Text = "Free Cam Speed", Default = 60, Min = 10, Max = 300, Rounding = 0, Tooltip = "Free camera speed" }):OnChanged(function(v) FC_Speed = v end)
 
 -- ===================== UI SETTINGS =====================
 ThemeManager:SetLibrary(Library); SaveManager:SetLibrary(Library); SaveManager:IgnoreThemeSettings()
@@ -516,6 +519,16 @@ RunService.Stepped:Connect(function()
 	if NoclipEnabled and LocalPlayer.Character then
 		for _, part in pairs(LocalPlayer.Character:GetDescendants()) do if part:IsA("BasePart") then part.CanCollide = false end end
 	end
+    
+    if DisableCollisionEnabled then
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character then
+                for _, part in pairs(player.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then part.CanCollide = false end
+                end
+            end
+        end
+    end
 end)
 
 local lastFpsTick = tick()
@@ -559,6 +572,16 @@ RunService.RenderStepped:Connect(function(dt)
 		local hum = SpectateTargetPlayer.Character:FindFirstChildOfClass("Humanoid")
 		if hum then Camera.CameraSubject = hum end
 	end
+
+    if ShiftlockEnabled and LocalPlayer.Character then
+        local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hrp and hum then
+            hum.AutoRotate = false
+            hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + Vector3.new(Camera.CFrame.LookVector.X, 0, Camera.CFrame.LookVector.Z))
+            UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+        end
+    end
 
 	if FreeCamEnabled then
 		local FCPart = workspace:FindFirstChild(ObfuscatedNames.FCPart)
