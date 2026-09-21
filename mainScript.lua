@@ -57,7 +57,8 @@ local AimbotEnabled, AimbotTarget, WallCheckEnabled, FOVEnabled, FOVRadius, Smoo
 local NoFogEnabled, FullbrightEnabled, FOVChangerEnabled, CustomFOV = false, false, false, 90
 local NoCamShakeEnabled, NoCamBobbingEnabled = false, false
 local EnableJumpToggle = false
-local ShiftlockEnabled, DisableCollisionEnabled = false, false
+local ShiftlockEnabled, ShiftlockOffset, DisableCollisionEnabled = false, 2, false
+local InvisibleEnabled, RealCharacter, FakeCharacter = false, nil, nil
 local FPSUnlockerEnabled, CamUnlockerEnabled = true, false
 local FreeCamEnabled, FreezeDuringEnabled, FC_Speed, fwdDown, bwdDown = false, false, 60, false, false
 local SpectateEnabled, SpectateTargetPlayer = false, nil
@@ -189,9 +190,11 @@ MainControlsBox:AddToggle("Shiftlock", { Text = "Shiftlock", Default = false, To
     ShiftlockEnabled = v
     if not v and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
         LocalPlayer.Character.Humanoid.AutoRotate = true
+        LocalPlayer.Character.Humanoid.CameraOffset = Vector3.zero
         UserInputService.MouseBehavior = Enum.MouseBehavior.Default
     end
 end)
+MainControlsBox:AddSlider("ShiftlockOffset", { Text = "Camera Position", Default = 2, Min = 0, Max = 10, Rounding = 1, Tooltip = "Camera X offset during shiftlock" }):OnChanged(function(v) ShiftlockOffset = v end)
 MainControlsBox:AddToggle("DisableCollision", { Text = "Disable Collision", Default = false, Tooltip = "Disables collisions with other players" }):OnChanged(function(v) DisableCollisionEnabled = v end)
 
 -- ===================== ВКЛАДКА: VISUALS =====================
@@ -289,6 +292,7 @@ AnimBox:AddToggle("PlayIdleAnim", { Text = "Play Idle Animation", Default = fals
 
 LocalPlayer.CharacterAdded:Connect(function(char)
     task.spawn(function()
+        if InvisibleEnabled and Library.Options.InvisibleTog then Library.Options.InvisibleTog:SetValue(false) end
         char:WaitForChild("Animate", 5)
         task.wait(0.5)
         updateLocalAnim()
@@ -368,6 +372,57 @@ MoveBox:AddToggle("Noclip", { Text = "Noclip", Default = false, Tooltip = "Allow
 	end
 end)
 MoveBox:AddToggle("InfJump", { Text = "Infinite Jump", Default = false, Tooltip = "Allows jumping in mid-air" }):OnChanged(function(v) InfJumpEnabled = v end)
+
+MoveBox:AddToggle("InvisibleTog", { Text = "Invisible", Default = false, Tooltip = "Makes your real character invisible" }):OnChanged(function(v)
+    InvisibleEnabled = v
+    if v then
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            RealCharacter = LocalPlayer.Character
+            RealCharacter.Archivable = true
+            FakeCharacter = RealCharacter:Clone()
+            FakeCharacter.Name = LocalPlayer.Name .. "_Fake"
+            FakeCharacter.Parent = workspace
+            
+            local realHRP = RealCharacter:FindFirstChild("HumanoidRootPart")
+            local fakeHRP = FakeCharacter:FindFirstChild("HumanoidRootPart")
+            
+            if realHRP and fakeHRP then
+                fakeHRP.CFrame = realHRP.CFrame
+                realHRP.CFrame = CFrame.new(9999, 9999, 9999)
+                realHRP.Anchored = true
+            end
+            
+            for _, part in pairs(FakeCharacter:GetDescendants()) do
+                if part:IsA("BasePart") or part:IsA("Decal") then
+                    part.Transparency = 0.5
+                end
+            end
+            
+            LocalPlayer.Character = FakeCharacter
+            Camera.CameraSubject = FakeCharacter:FindFirstChild("Humanoid")
+            
+            local fakeAnimate = FakeCharacter:FindFirstChild("Animate")
+            if fakeAnimate then
+                fakeAnimate.Disabled = true
+                task.wait(0.1)
+                fakeAnimate.Disabled = false
+            end
+        end
+    else
+        if RealCharacter and FakeCharacter then
+            local realHRP = RealCharacter:FindFirstChild("HumanoidRootPart")
+            local fakeHRP = FakeCharacter:FindFirstChild("HumanoidRootPart")
+            if realHRP and fakeHRP then
+                realHRP.Anchored = false
+                realHRP.CFrame = fakeHRP.CFrame
+            end
+            LocalPlayer.Character = RealCharacter
+            Camera.CameraSubject = RealCharacter:FindFirstChild("Humanoid")
+            FakeCharacter:Destroy()
+            FakeCharacter = nil
+        end
+    end
+end)
 
 local FlyBox = Tabs.Player:AddRightGroupbox("Fly Settings")
 FlyBox:AddToggle("FlyTog", { Text = "Fly", Default = false, Tooltip = "Enables flying" }):OnChanged(function(v) FlyEnabled = v end)
@@ -468,7 +523,7 @@ local function isVisible(targetPart)
 	if not WallCheckEnabled then return true end
 	local params = RaycastParams.new(); params.FilterType = Enum.RaycastFilterType.Exclude
 	local FCPart = workspace:FindFirstChild(ObfuscatedNames.FCPart)
-	params.FilterDescendantsInstances = {LocalPlayer.Character, FCPart}; params.IgnoreWater = true
+	params.FilterDescendantsInstances = {LocalPlayer.Character, FCPart, RealCharacter}; params.IgnoreWater = true
 	local hit = workspace:Raycast(Camera.CFrame.Position, targetPart.Position - Camera.CFrame.Position, params)
 	return hit == nil or hit.Instance:IsDescendantOf(targetPart.Parent)
 end
@@ -563,10 +618,16 @@ RunService.RenderStepped:Connect(function(dt)
 		if hum then hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true); if hum.JumpPower == 0 then hum.JumpPower = 50 end end
 	end
 
-	if LocalPlayer.Character then
-		local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-		if hum and (NoCamBobbingEnabled or NoCamShakeEnabled) then hum.CameraOffset = Vector3.zero end
-	end
+    if LocalPlayer.Character then
+        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            if ShiftlockEnabled then
+                hum.CameraOffset = Vector3.new(ShiftlockOffset, 0, 0)
+            elseif NoCamBobbingEnabled or NoCamShakeEnabled then
+                hum.CameraOffset = Vector3.zero
+            end
+        end
+    end
 
 	if SpectateEnabled and SpectateTargetPlayer and SpectateTargetPlayer.Character then
 		local hum = SpectateTargetPlayer.Character:FindFirstChildOfClass("Humanoid")
