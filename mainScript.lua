@@ -20,6 +20,7 @@ local TeleportService = getSvc("TeleportService")
 local HttpService = getSvc("HttpService")
 local Lighting = getSvc("Lighting")
 local ContentProvider = getSvc("ContentProvider")
+local VirtualUser = getSvc("VirtualUser")
 
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
@@ -45,11 +46,11 @@ local function RndName()
 	return str
 end
 
-local ObfuscatedNames = { GUI = RndName(), FCPart = RndName(), Highlight = RndName() }
+local ObfuscatedNames = { GUI = RndName(), FCPart = RndName(), Highlight = RndName(), AirWalk = RndName() }
 if setfpscap then setfpscap(9999) end
 
 -- ===================== ЗМІННІ СТАНУ =====================
-local ESPSettings = { Master = false, Highlight = true, Box = false, Name = false, HP = false, Studs = false }
+local ESPSettings = { Master = false, Highlight = true, Box = false, Name = false, HP = false, Studs = false, Skeleton = false }
 local ESPColor = Color3.fromRGB(255, 50, 50)
 local HitboxEnabled, HitboxSize, KickStuffEnabled = false, 10, true
 local SpeedEnabled, TargetSpeed, NoclipEnabled, InfJumpEnabled, FlyEnabled, FlySpeed = false, 16, false, false, false, 50
@@ -63,6 +64,20 @@ local FPSUnlockerEnabled, CamUnlockerEnabled = true, false
 local FreeCamEnabled, FreezeDuringEnabled, FC_Speed, fwdDown, bwdDown = false, false, 60, false, false
 local SpectateEnabled, SpectateTargetPlayer = false, nil
 local WhitelistedNames, OriginalSizes, OriginalNoclipStates = {}, {}, {}
+
+-- Нові змінні для доданих функцій
+local OriginalGravity = workspace.Gravity
+local GravityEnabled, CustomGravity = false, 50
+local AirWalkEnabled = false
+local AirWalkPart = Instance.new("Part")
+AirWalkPart.Name = ObfuscatedNames.AirWalk
+AirWalkPart.Size = Vector3.new(6, 1, 6)
+AirWalkPart.Transparency = 1
+AirWalkPart.Anchored = true
+AirWalkPart.CanCollide = true
+
+local AntiAfkEnabled = false
+local AntiAfkConnection = nil
 
 -- Кеш для продуктивності та анімацій
 local PerfSettings = { Textures = false, Particles = false, Animations = false }
@@ -180,9 +195,26 @@ ESPBox:AddToggle("ESPBox", { Text = "ESP Box", Default = false, Tooltip = "Draws
 ESPBox:AddToggle("ESPName", { Text = "ESP Name", Default = false, Tooltip = "Shows player names" }):OnChanged(function(v) ESPSettings.Name = v end)
 ESPBox:AddToggle("ESPHP", { Text = "ESP Health", Default = false, Tooltip = "Shows player health bars" }):OnChanged(function(v) ESPSettings.HP = v end)
 ESPBox:AddToggle("ESPStuds", { Text = "ESP Distance (Studs)", Default = false, Tooltip = "Shows distance to players" }):OnChanged(function(v) ESPSettings.Studs = v end)
+ESPBox:AddToggle("ESPSkeleton", { Text = "ESP Skeleton", Default = false, Tooltip = "Shows player skeleton" }):OnChanged(function(v) ESPSettings.Skeleton = v end)
 
 local MainControlsBox = Tabs.Main:AddRightGroupbox("Controls & Hitbox")
 MainControlsBox:AddToggle("EnableJump", { Text = "Enable Jump", Default = false, Tooltip = "Enables jump and mobile jump button" }):OnChanged(function(v) EnableJumpToggle = v end)
+
+-- GRAVITY CHANGER & AIR WALK
+MainControlsBox:AddToggle("GravityTog", { Text = "Gravity Changer", Default = false, Tooltip = "Enable custom gravity" }):OnChanged(function(v)
+    GravityEnabled = v
+    workspace.Gravity = v and CustomGravity or OriginalGravity
+end)
+MainControlsBox:AddSlider("GravityVal", { Text = "Gravity Amount", Default = 50, Min = 0, Max = 100, Rounding = 0, Tooltip = "Adjust gravity" }):OnChanged(function(v)
+    CustomGravity = v
+    if GravityEnabled then workspace.Gravity = CustomGravity end
+end)
+
+MainControlsBox:AddToggle("AirWalkTog", { Text = "Air Walk", Default = false, Tooltip = "Creates an invisible platform under your feet" }):OnChanged(function(v)
+    AirWalkEnabled = v
+    if not v then AirWalkPart.Parent = nil end
+end)
+
 MainControlsBox:AddToggle("Hitbox", { Text = "Enable Hitbox", Default = false, Tooltip = "Expands player hitboxes" }):OnChanged(function(v) HitboxEnabled = v end)
 MainControlsBox:AddSlider("HitboxSize", { Text = "Hitbox Size", Default = 10, Min = 1, Max = 30, Rounding = 0, Tooltip = "Size of expanded hitboxes" }):OnChanged(function(v) HitboxSize = v end)
 MainControlsBox:AddToggle("KickSec", { Text = "Kick Security", Default = true, Tooltip = "Anti-kick protection" }):OnChanged(function(v) KickStuffEnabled = v end)
@@ -318,6 +350,21 @@ MiscBox:AddToggle("FPSUnlock", { Text = "FPS Unlocker", Default = true, Tooltip 
 end)
 MiscBox:AddToggle("CamUnlock", { Text = "Camera Unlocker", Default = false, Tooltip = "Unlocks maximum camera zoom" }):OnChanged(function(v) 
     CamUnlockerEnabled = v; LocalPlayer.CameraMaxZoomDistance = v and 100000 or 128 
+end)
+
+-- ANTI-AFK TOGGLE
+MiscBox:AddToggle("AntiAFK", { Text = "Anti-AFK", Default = false, Tooltip = "Prevents you from being kicked for inactivity" }):OnChanged(function(v)
+    AntiAfkEnabled = v
+    if v then
+        if LocalPlayer.Idled then
+            AntiAfkConnection = LocalPlayer.Idled:Connect(function()
+                VirtualUser:CaptureController()
+                VirtualUser:ClickButton2(Vector2.new())
+            end)
+        end
+    else
+        if AntiAfkConnection then AntiAfkConnection:Disconnect(); AntiAfkConnection = nil end
+    end
 end)
 
 MiscBox:AddButton({
@@ -558,6 +605,17 @@ local function createPlayerESP(player)
 	t.HPBar = Instance.new("Frame", t.HPBarBg); t.HPBar.BackgroundColor3 = Color3.fromRGB(50, 255, 50); t.HPBar.BorderSizePixel = 0
 	t.StudsLbl = Instance.new("TextLabel", ESP_Folder); t.StudsLbl.BackgroundTransparency = 1; t.StudsLbl.TextColor3 = Color3.fromRGB(255, 255, 255); t.StudsLbl.Font = Enum.Font.GothamBold; t.StudsLbl.TextSize = 12
 	local StudsStroke = Instance.new("UIStroke", t.StudsLbl); StudsStroke.Thickness = 1.5; StudsStroke.Color = Color3.fromRGB(0, 0, 0)
+	
+	-- Додавання Skeleton ліній
+	t.SkeletonLines = {}
+	for i = 1, 14 do
+	    local line = Instance.new("Frame", ESP_Folder)
+	    line.BorderSizePixel = 0
+	    line.AnchorPoint = Vector2.new(0.5, 0.5)
+	    line.Visible = false
+	    t.SkeletonLines[i] = line
+	end
+
 	t.BoxFrame.Visible = false; t.NameLbl.Visible = false; t.HPBarBg.Visible = false; t.StudsLbl.Visible = false
 	ESP_Elements[player] = t
 	return t
@@ -565,10 +623,63 @@ end
 
 Players.PlayerRemoving:Connect(function(player)
 	if ESP_Elements[player] then
-		for _, v in pairs(ESP_Elements[player]) do if typeof(v) == "Instance" then pcall(function() v:Destroy() end) end end
+		for _, v in pairs(ESP_Elements[player]) do
+		    if typeof(v) == "Instance" then pcall(function() v:Destroy() end) 
+		    elseif type(v) == "table" then for _, l in ipairs(v) do pcall(function() l:Destroy() end) end end
+		end
 		ESP_Elements[player] = nil
 	end
 end)
+
+-- Функція малювання Skeleton ESP
+local function UpdateSkeletonESP(char, lines, color)
+    if not char or not ESPSettings.Skeleton then
+        for _, l in ipairs(lines) do l.Visible = false end
+        return
+    end
+
+    local isR15 = char:FindFirstChild("UpperTorso") ~= nil
+    local bones = isR15 and {
+        {"Head", "UpperTorso"}, {"UpperTorso", "LowerTorso"},
+        {"UpperTorso", "LeftUpperArm"}, {"LeftUpperArm", "LeftLowerArm"}, {"LeftLowerArm", "LeftHand"},
+        {"UpperTorso", "RightUpperArm"}, {"RightUpperArm", "RightLowerArm"}, {"RightLowerArm", "RightHand"},
+        {"LowerTorso", "LeftUpperLeg"}, {"LeftUpperLeg", "LeftLowerLeg"}, {"LeftLowerLeg", "LeftFoot"},
+        {"LowerTorso", "RightUpperLeg"}, {"RightUpperLeg", "RightLowerLeg"}, {"RightLowerLeg", "RightFoot"}
+    } or {
+        {"Head", "Torso"}, {"Torso", "Left Arm"}, {"Torso", "Right Arm"}, {"Torso", "Left Leg"}, {"Torso", "Right Leg"}
+    }
+
+    for i = 1, 14 do
+        local line = lines[i]
+        local pair = bones[i]
+        if pair then
+            local p1 = char:FindFirstChild(pair[1])
+            local p2 = char:FindFirstChild(pair[2])
+            if p1 and p2 then
+                local pos1, vis1 = Camera:WorldToViewportPoint(p1.Position)
+                local pos2, vis2 = Camera:WorldToViewportPoint(p2.Position)
+                if vis1 or vis2 then
+                    local v1 = Vector2.new(pos1.X, pos1.Y)
+                    local v2 = Vector2.new(pos2.X, pos2.Y)
+                    local center = (v1 + v2) / 2
+                    local length = (v1 - v2).Magnitude
+                    local angle = math.atan2(v2.Y - v1.Y, v2.X - v1.X)
+                    line.Size = UDim2.new(0, length, 0, 1.5)
+                    line.Position = UDim2.new(0, center.X, 0, center.Y)
+                    line.Rotation = math.deg(angle)
+                    line.BackgroundColor3 = color
+                    line.Visible = true
+                else
+                    line.Visible = false
+                end
+            else
+                line.Visible = false
+            end
+        else
+            if line then line.Visible = false end
+        end
+    end
+end
 
 RunService.Stepped:Connect(function()
 	if NoclipEnabled and LocalPlayer.Character then
@@ -582,6 +693,15 @@ RunService.Stepped:Connect(function()
                     if part:IsA("BasePart") then part.CanCollide = false end
                 end
             end
+        end
+    end
+
+    -- Логіка Air Walk платформи
+    if AirWalkEnabled and LocalPlayer.Character then
+        local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            AirWalkPart.Parent = workspace
+            AirWalkPart.Position = hrp.Position - Vector3.new(0, 3.5, 0)
         end
     end
 end)
@@ -669,9 +789,10 @@ RunService.RenderStepped:Connect(function(dt)
 			
 			if FlyEnabled then
 				hum.PlatformStand = false
-				local moveDir, camCFrame, vel = hum.MoveDirection, Camera.CFrame, Vector3.zero
-				if moveDir.Magnitude > 0.01 then
-					local flyDir = (camCFrame.LookVector * Vector3.new(camCFrame.LookVector.X, 0, camCFrame.LookVector.Z).Unit:Dot(moveDir)) + (camCFrame.RightVector * Vector3.new(camCFrame.RightVector.X, 0, camCFrame.RightVector.Z).Unit:Dot(moveDir))
+				local moveDir, camCFrame, vel = Vector3.zero, Camera.CFrame, Vector3.zero
+				-- Невелика корекція для сумісності з кастомним fly
+				if hum.MoveDirection.Magnitude > 0.01 then
+					local flyDir = (camCFrame.LookVector * Vector3.new(camCFrame.LookVector.X, 0, camCFrame.LookVector.Z).Unit:Dot(hum.MoveDirection)) + (camCFrame.RightVector * Vector3.new(camCFrame.RightVector.X, 0, camCFrame.RightVector.Z).Unit:Dot(hum.MoveDirection))
 					if flyDir.Magnitude > 0 then vel = flyDir.Unit * FlySpeed end
 				end
 				local verticalVel = 0
@@ -724,8 +845,11 @@ RunService.RenderStepped:Connect(function(dt)
 						else espUI.HPBarBg.Visible = false end
 						if ESPSettings.Studs then espUI.StudsLbl.Text = tostring(math.floor((Camera.CFrame.Position - rootPart.Position).Magnitude)) .. "s"; espUI.StudsLbl.Size = UDim2.new(0, w, 0, 15); espUI.StudsLbl.Position = UDim2.new(0, x, 0, y + h + 2); espUI.StudsLbl.Visible = true else espUI.StudsLbl.Visible = false end
 					else espUI.BoxFrame.Visible = false; espUI.NameLbl.Visible = false; espUI.HPBarBg.Visible = false; espUI.StudsLbl.Visible = false end
-				else espUI.Highlight.Enabled = false; espUI.BoxFrame.Visible = false; espUI.NameLbl.Visible = false; espUI.HPBarBg.Visible = false; espUI.StudsLbl.Visible = false end
-			else espUI.Highlight.Enabled = false; espUI.BoxFrame.Visible = false; espUI.NameLbl.Visible = false; espUI.HPBarBg.Visible = false; espUI.StudsLbl.Visible = false end
+
+                    -- Оновлення Skeleton ESP
+                    if ESPSettings.Skeleton then UpdateSkeletonESP(pchar, espUI.SkeletonLines, ESPColor) else for _, l in ipairs(espUI.SkeletonLines) do l.Visible = false end end
+				else espUI.Highlight.Enabled = false; espUI.BoxFrame.Visible = false; espUI.NameLbl.Visible = false; espUI.HPBarBg.Visible = false; espUI.StudsLbl.Visible = false; for _, l in ipairs(espUI.SkeletonLines) do l.Visible = false end end
+			else espUI.Highlight.Enabled = false; espUI.BoxFrame.Visible = false; espUI.NameLbl.Visible = false; espUI.HPBarBg.Visible = false; espUI.StudsLbl.Visible = false; for _, l in ipairs(espUI.SkeletonLines) do l.Visible = false end end
 		end
 	end
 end)
